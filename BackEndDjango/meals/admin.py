@@ -14,8 +14,5 @@ class DailyMealPlanAdmin(admin.ModelAdmin):
     list_filter = ["date", "user"]
     inlines = [
         MealItemInline
-    ]  # ⭐️ 하루치 식단 아래에 끼니 리스트가 주르륵 포함되어 보임!
+    ] 
 
-
-# MealItem 단독으로도 보고 싶다면 아래 주석을 해제하세요
-# admin.site.register(MealItem)

@@ -17,14 +17,15 @@ class DailyMealPlan(models.Model):
 
 
 
+
 class MealItem(models.Model):
     daily_plan = models.ForeignKey(
         DailyMealPlan,
         on_delete=models.CASCADE,
-        related_name="menu_list", 
+        related_name="menu_list",
         verbose_name="하루치 식단 리스트",
     )
-    
+
     MEAL_TIME_CHOICES = [
         ("BREAKFAST", "아침"),
         ("LUNCH", "점심"),
@@ -36,12 +37,12 @@ class MealItem(models.Model):
         max_length=10, choices=MEAL_TIME_CHOICES, verbose_name="끼니 분류"
     )
 
-    # 메뉴 이름 및 영양소
     menu_name = models.CharField(max_length=100, verbose_name="메뉴 이름")
     calories = models.FloatField(default=0.0, verbose_name="칼로리(kcal)")
     carbohydrates = models.FloatField(default=0.0, verbose_name="탄수화물(g)")
     protein = models.FloatField(default=0.0, verbose_name="단백질(g)")
     fat = models.FloatField(default=0.0, verbose_name="지방(g)")
+    recipe = models.TextField(null=True, blank=True, verbose_name="조리법 및 레시피")
 
     is_eaten = models.BooleanField(default=True, verbose_name="실제 섭취 여부")
 
