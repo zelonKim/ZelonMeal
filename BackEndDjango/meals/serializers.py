@@ -22,6 +22,8 @@ class MealItemSerializer(serializers.ModelSerializer):
         ]
 
 
+
+
 class DailyMealPlanSerializer(serializers.ModelSerializer):
     menu_list = MealItemSerializer(many=True, read_only=True)
     user_username = serializers.CharField(source="user.username", read_only=True)

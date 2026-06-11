@@ -10,6 +10,38 @@ from .serializers import DailyMealPlanSerializer
 from django.db import transaction
 
 
+class TodayMealView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        today = date.today()
+
+        # 🔍 1. 오늘 유저가 발급받은 식단 플랜이 DB에 있는지 타겟 조회
+        today_meal = DailyMealPlan.objects.filter(user=user, date=today).first()
+
+        # ❌ 2. 오늘 생성된 식단 플랜이 없다면 프론트엔드에 빈 응답 전달
+        # 💡 404를 내보내는 것보다 빈 데이터 객체(None/Null)를 주는 것이
+        # 💡 리액트 쿼리(TanStack Query) 에러 핸들링과 초기 화면(CASE 3 빈화면) 유도에 훨씬 매끄럽습니다.
+        if not today_meal:
+            return Response(
+                {
+                    "id": None,
+                    "menu_list": [],
+                    "detail": "오늘 생성된 추천 식단이 아직 존재하지 않습니다.",
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        # 🎯 3. 식단 플랜이 존재하면 기존에 짜두신 Serializer를 태워 4단 메뉴와 함께 전송
+        serializer = DailyMealPlanSerializer(today_meal)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+##############################
+
+
 class RecommendMealView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -37,6 +69,8 @@ class RecommendMealView(APIView):
                     "menu_name", flat=True
                 )
             )
+
+        print("어제먹은 음식", yesterday_meals)
 
         # 3. 유저의 기본 신체 정보 + 어제 먹은 식단 리스트
         payload = {
