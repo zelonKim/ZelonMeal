@@ -33,15 +33,12 @@ class UserProfileUpdateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        """현재 로그인한 유저의 신체 정보를 조회하는 기능 (내 정보 불러오기용)"""
         user = request.user
         serializer = UserProfileSerializer(user)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def patch(self, request):
-        """현재 로그인한 유저의 신체 정보를 받아 DB에 저장/수정하는 기능"""
         user = request.user
-
         # partial=True 옵션을 주어 유저가 나이만 보내든, 몸무게만 보내든 보낸 것만 쏙 고치게 만듭니다.
         serializer = UserProfileSerializer(user, data=request.data, partial=True)
 

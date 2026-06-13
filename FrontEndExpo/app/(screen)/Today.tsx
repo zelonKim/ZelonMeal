@@ -1,17 +1,27 @@
 import { client } from "@/api/client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as SecureStore from "expo-secure-store";
-import { BookOpen, Flame, Sparkles, Utensils } from "lucide-react-native";
+import {
+  BookOpen,
+  Flame,
+  RefreshCw,
+  ShoppingCart,
+  Sparkles,
+  Utensils,
+} from "lucide-react-native";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Dimensions,
   FlatList,
-  Platform, // 🌟 OS 구분을 위해 추가
+  Linking,
+  Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -19,7 +29,6 @@ import {
 const { width, height } = Dimensions.get("window");
 const CARD_WIDTH = width * 0.88;
 
-// 📝 장고 Choice 값 한글 변환용 딕셔너리
 const mealTimeMap: Record<string, string> = {
   BREAKFAST: "☀️ 아침 식사",
   LUNCH: "🍱 점심 식사",
@@ -43,9 +52,10 @@ export default function TodayScreen() {
   const queryClient = useQueryClient();
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
 
-  // ------------------------------------------
-  // 1️⃣ [GET] 오늘의 식단 플랜이 이미 존재하는지 실시간 조회
-  // ------------------------------------------
+  const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
+  const [userFeedback, setUserFeedback] = useState("");
+
+  // 1️⃣ [GET] 오늘의 식단 플랜 실시간 조회
   const { data: todayPlan, isLoading: isTodayLoading } = useQuery({
     queryKey: ["todayMealPlan"],
     queryFn: async () => {
@@ -58,9 +68,7 @@ export default function TodayScreen() {
     retry: false,
   });
 
-  // ------------------------------------------
-  // 2️⃣ [POST] AI 추천 식단 생성 요청 연동
-  // ------------------------------------------
+  // 2️⃣ [POST] 최초 AI 추천 식단 생성 요청 연동
   const recommendMutation = useMutation({
     mutationFn: async () => {
       const token = await SecureStore.getItemAsync("userToken");
@@ -76,7 +84,7 @@ export default function TodayScreen() {
       setCurrentCardIndex(0);
       Alert.alert(
         "설계 완료",
-        "성진님의 신체 스펙과 섭취 패턴을 분석해 맞춤 식단을 구성했습니다! 🌱",
+        "성진님의 신체 스펙을 분석해 맞춤 식단을 구성했습니다! 🌱",
       );
     },
     onError: (error: any) => {
@@ -87,8 +95,74 @@ export default function TodayScreen() {
     },
   });
 
+  // 3️⃣ [POST] 유저 피드백 기반 AI 식단 재추천 연동
+  const reRecommendMutation = useMutation({
+    mutationFn: async (feedback: string) => {
+      const token = await SecureStore.getItemAsync("userToken");
+      const response = await client.post(
+        "/v1/meals/rerecommend/",
+        { user_feedback: feedback },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      return response.data;
+    },
+    onSuccess: (response) => {
+      queryClient.setQueryData(["todayMealPlan"], response.data);
+
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, "0");
+      const date = String(today.getDate()).padStart(2, "0");
+      const todayFormattedStr = `${year}-${month}-${date}`;
+
+      queryClient.invalidateQueries({
+        queryKey: ["dailyStats", todayFormattedStr],
+      });
+      setCurrentCardIndex(0);
+      setFeedbackModalVisible(false);
+      setUserFeedback("");
+      Alert.alert(
+        "재구성 완료",
+        "피드백을 반영하여 오늘의 식단을 재구성 하였습니다!",
+      );
+    },
+    onError: (error: any) => {
+      const errorMsg =
+        error.response?.data?.detail || "식단 재추천 중 문제가 발생했습니다.";
+      Alert.alert("재추천 실패", errorMsg);
+    },
+  });
+
+  const handleZMartLink = async () => {
+    const currentMenu = todayPlan?.menu_list?.[currentCardIndex];
+    if (!currentMenu?.menu_name) {
+      Alert.alert("알림", "검색할 메뉴 정보가 존재하지 않습니다.");
+      return;
+    }
+    const encodedKeyword = encodeURIComponent(currentMenu.menu_name);
+
+    const emartWebUrl = `https://m.ssg.com/search.ssg?query=${encodedKeyword}`;
+    try {
+      await Linking.openURL(emartWebUrl);
+    } catch (err) {
+      Alert.alert("Z마트 접속 실패");
+    }
+  };
+
   const handleMealRecommend = () => {
     recommendMutation.mutate();
+  };
+
+  const handleOpenFeedback = () => {
+    setFeedbackModalVisible(true);
+  };
+
+  const handleConfirmReRecommend = () => {
+    if (!userFeedback.trim()) {
+      Alert.alert("입력 오류", "식단을 보완할 피드백 내용을 입력해주세요!");
+      return;
+    }
+    reRecommendMutation.mutate(userFeedback.trim());
   };
 
   const handleScroll = (e: any) => {
@@ -100,22 +174,11 @@ export default function TodayScreen() {
     }
   };
 
-  // 아침, 점심, 저녁, 간식 개별 카드 렌더링 함수
-  // 아침, 점심, 저녁, 간식 개별 카드 렌더링 함수
   const renderMealCard = ({ item }: { item: MealItem }) => {
     const formatRecipe = (recipe: string | null) => {
       if (!recipe) return "레시피 정보가 없습니다.";
-      const trimmedRecipe = recipe.trim();
-
-      return Platform.select({
-        ios: () => {
-          return trimmedRecipe.replace(/(?!^)(?=\d+\.)/g, "\n");
-        },
-        android: () => {
-          return trimmedRecipe;
-        },
-        default: () => trimmedRecipe,
-      })();
+      const flattenedRecipe = recipe.replace(/[\r\n]+/g, " ").trim();
+      return flattenedRecipe.replace(/(?!^)(?=\d+\.)/g, "\n");
     };
 
     return (
@@ -137,11 +200,10 @@ export default function TodayScreen() {
             {item.menu_name}
           </Text>
 
-          {/* 📊 영양소 탄·단·지 대시보드 */}
           <View style={styles.nutritionRow}>
             <View style={styles.nutriItem}>
               <Text style={styles.nutriLabel}>탄수화물</Text>
-              <Text style={styles.nutriValue}>{item.carbohydrates}g</Text>
+              <Text style={styles.nutriValue_C}>{item.carbohydrates}g</Text>
             </View>
             <View style={styles.nutriItem}>
               <Text style={styles.nutriLabel}>단백질</Text>
@@ -149,24 +211,21 @@ export default function TodayScreen() {
             </View>
             <View style={styles.nutriItem}>
               <Text style={styles.nutriLabel}>지방</Text>
-              <Text style={styles.nutriValue}>{item.fat}g</Text>
+              <Text style={styles.nutriValue_F}>{item.fat}g</Text>
             </View>
           </View>
 
           <View style={styles.divider} />
 
-          {/* 🍳 AI 추천 레시피 가이드라인 */}
           <View style={styles.recipeHeader}>
             <BookOpen size={15} color="#4B5563" style={{ marginRight: 4 }} />
             <Text style={styles.nutriTitle}>레시피 가이드</Text>
           </View>
 
-          {/* 🌟 레시피 가이드 스크롤 영역 */}
           <View style={styles.recipeScrollContainer}>
             <ScrollView
               showsVerticalScrollIndicator={true}
               nestedScrollEnabled={true}
-              // contentContainerStyle에서 여백 밀림 현상 방어
               contentContainerStyle={styles.scrollContent}
             >
               <Text style={styles.mealDesc}>{formatRecipe(item.recipe)}</Text>
@@ -177,15 +236,15 @@ export default function TodayScreen() {
     );
   };
 
-  // 로딩 디펜스 가드
-
-  if (recommendMutation.isPending) {
+  const isGlobalLoading =
+    recommendMutation.isPending || reRecommendMutation.isPending;
+  if (isGlobalLoading) {
     return (
-      <View style={styles.container}>
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#10B981" />
           <Text style={styles.loadingText}>
-            AI가 오늘의 식단을 설계하고 있어요... 🥦
+            AI가 오늘의 식단을 구성하고 있어요... 🥑
           </Text>
         </View>
       </View>
@@ -194,7 +253,7 @@ export default function TodayScreen() {
 
   if (isTodayLoading) {
     return (
-      <View style={styles.container}>
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#10B981" />
           <Text style={styles.loadingText}>
@@ -210,34 +269,64 @@ export default function TodayScreen() {
   return (
     <View style={styles.container}>
       {menuList.length > 0 ? (
-        <View style={styles.cardContainer}>
-          <Text style={styles.screenTitle}>🥑 오늘의 AI 추천 식단</Text>
-
-          <View style={styles.carouselWrapper}>
-            <FlatList
-              data={menuList}
-              renderItem={renderMealCard}
-              keyExtractor={(item) => item.id.toString()}
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              onScroll={handleScroll}
-              scrollEventThrottle={16}
-            />
-          </View>
-
-          <View style={styles.dotContainer}>
-            {menuList.map((_: any, index: number) => (
-              <View
-                key={index}
-                style={[
-                  styles.dot,
-                  currentCardIndex === index
-                    ? styles.activeDot
-                    : styles.inactiveDot,
-                ]}
+        <View>
+          <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
+            <TouchableOpacity
+              style={styles.ZmartCartBadge}
+              activeOpacity={0.7}
+              onPress={handleZMartLink}
+            >
+              <ShoppingCart
+                size={15}
+                color="#FFFFFF"
+                style={{ marginRight: 6 }}
               />
-            ))}
+              <Text style={styles.ZmartBadgeText}>Z마트</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.cardContainer}>
+            {/* 🌟 [구조 변경] 타이틀과 배민 B마트 퀵 버튼 인라인 일체형 배치 */}
+            <View style={styles.titleHeaderInlineRow}>
+              <Text style={styles.screenTitle}>🥑 오늘의 AI 추천 식단</Text>
+            </View>
+
+            <View style={styles.carouselWrapper}>
+              <FlatList
+                data={menuList}
+                renderItem={renderMealCard}
+                keyExtractor={(item) => item.id.toString()}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onScroll={handleScroll}
+                scrollEventThrottle={16}
+              />
+            </View>
+
+            <View style={styles.dotContainer}>
+              {menuList.map((_: any, index: number) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.dot,
+                    currentCardIndex === index
+                      ? styles.activeDot
+                      : styles.inactiveDot,
+                  ]}
+                />
+              ))}
+            </View>
+
+            <TouchableOpacity
+              style={styles.reRecommendButton}
+              activeOpacity={0.8}
+              onPress={handleOpenFeedback}
+            >
+              <RefreshCw size={15} color="#064E3B" style={{ marginRight: 6 }} />
+              <Text style={styles.reRecommendButtonText}>
+                식단 다시 추천받기
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
       ) : (
@@ -260,6 +349,50 @@ export default function TodayScreen() {
           </TouchableOpacity>
         </View>
       )}
+
+      <Modal
+        visible={feedbackModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setFeedbackModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.feedbackModalBox}>
+            <Text style={styles.feedbackModalTitle}>🔄 보완할 내용</Text>
+            <Text style={styles.feedbackModalSub}>
+              현재 식단에서 보완할 내용을 알려주시면 AI가 식단을 다시
+              추천해드려요!
+            </Text>
+
+            <TextInput
+              style={styles.feedbackInput}
+              value={userFeedback}
+              onChangeText={setUserFeedback}
+              placeholder="예:점심은 고기가 안들어가는 요리로 대체해줘"
+              multiline
+              numberOfLines={3}
+              maxLength={120}
+              textAlignVertical="top"
+              autoFocus={true}
+            />
+
+            <View style={styles.modalButtonRow}>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.modalCancelBtn]}
+                onPress={() => setFeedbackModalVisible(false)}
+              >
+                <Text style={styles.modalCancelBtnText}>취소</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.modalConfirmBtn]}
+                onPress={handleConfirmReRecommend}
+              >
+                <Text style={styles.modalConfirmBtnText}>입력 완료</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -268,9 +401,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "transparent",
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: -24,
+    marginTop: 20,
   },
   loadingContainer: {
     justifyContent: "center",
@@ -289,16 +420,43 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  titleHeaderInlineRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    width: CARD_WIDTH,
+    marginBottom: 20,
+    paddingHorizontal: 4,
+  },
   screenTitle: {
     fontSize: 22,
     fontWeight: "bold",
     color: "#111827",
-    alignSelf: "flex-start",
-    marginBottom: 20,
-    paddingLeft: width * 0.06 + 4,
   },
+
+  ZmartCartBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#10B981",
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 14,
+    shadowColor: "#10B981",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 5,
+    elevation: 3,
+    marginBottom: 20,
+    marginRight: 24,
+  },
+  ZmartBadgeText: {
+    fontSize: 12,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+  },
+
   carouselWrapper: {
-    height: 430, // 🚀 스크롤 및 간격 확보를 위해 높이 400 -> 420으로 미세 확장
+    height: 430,
   },
   cardPage: {
     width: width,
@@ -316,14 +474,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.03,
     shadowRadius: 16,
     ...Platform.select({
-      ios: {
-        elevation: 4,
-        marginBottom: 3,
-      },
-      android: {
-        elevation: 1,
-        marginBottom: 6,
-      },
+      ios: { elevation: 4, marginBottom: 3 },
+      android: { elevation: 1, marginBottom: 6 },
     }),
   },
   tagRow: {
@@ -359,7 +511,8 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#1F2937",
     lineHeight: 28,
-    marginVertical: 4,
+    marginTop: 12,
+    marginLeft: 2,
   },
   divider: {
     height: 1,
@@ -390,19 +543,15 @@ const styles = StyleSheet.create({
   nutriLabel: {
     fontSize: 11,
     color: "#9CA3AF",
+    fontWeight: "500",
     marginBottom: 4,
   },
-  nutriValue: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#374151",
-  },
-  nutriValue_P: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#10B981",
-  },
+  nutriValue_C: { fontSize: 14, fontWeight: "bold", color: "#FBBF24" },
+  nutriValue_F: { fontSize: 14, fontWeight: "bold", color: "#60A5FA" },
+  nutriValue_P: { fontSize: 14, fontWeight: "bold", color: "#10B981" },
   emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 40,
   },
@@ -441,59 +590,103 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  buttonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
+  buttonText: { color: "#FFFFFF", fontSize: 16, fontWeight: "bold" },
   dotContainer: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     gap: 8,
     marginTop: 20,
+    marginBottom: 20,
   },
-  dot: {
-    height: 6,
-    borderRadius: 3,
-  },
-  activeDot: {
-    width: 12,
-    backgroundColor: "#10B981",
-  },
-  inactiveDot: {
-    width: 6,
-    backgroundColor: "#D1D5DB",
-  },
-
+  dot: { height: 6, borderRadius: 3 },
+  activeDot: { width: 12, backgroundColor: "#10B981" },
+  inactiveDot: { width: 6, backgroundColor: "#D1D5DB" },
   recipeScrollContainer: {
-    marginTop: 9,
-    // iOS와 안드로이드 모두에서 카드가 깨지지 않는 고정형 절대 높이 가이드라인으로 교체!
+    marginTop: 6,
     height: Platform.OS === "ios" ? 150 : 135,
     width: "100%",
   },
-
-  // 🌟 [신규] 스크롤 뷰 내부 내용물이 바닥에 딱 달라붙지 않고 정돈되게 다듬는 컨테이너 핏
   scrollContent: {
     paddingRight: Platform.OS === "android" ? 14 : 8,
-    paddingBottom: 4, // 하단 유령 마진을 유발하던 과도한 패딩 전면 축소
+    paddingBottom: 4,
   },
-
   mealDesc: {
     color: "#6B7280",
-
     textAlignVertical: "top",
-
     ...Platform.select({
-      ios: {
-        fontSize: 13,
-        lineHeight: 22,
-      },
-      android: {
-        fontSize: 12,
-        lineHeight: 21,
-        includeFontPadding: false,
-      },
+      ios: { fontSize: 13, lineHeight: 20 },
+      android: { fontSize: 12, lineHeight: 20, includeFontPadding: false },
     }),
   },
+  reRecommendButton: {
+    flexDirection: "row",
+    backgroundColor: "#E6ECE8",
+    borderWidth: 1,
+    borderColor: "#34D399",
+    width: CARD_WIDTH,
+    height: 48,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 4,
+  },
+  reRecommendButtonText: {
+    color: "#064E3B",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  feedbackModalBox: {
+    backgroundColor: "#FFFFFF",
+    width: width * 0.86,
+    borderRadius: 22,
+    padding: 24,
+    marginBottom: 80,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  feedbackModalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#111827",
+    marginBottom: 6,
+  },
+  feedbackModalSub: {
+    fontSize: 13,
+    color: "#6B7280",
+    lineHeight: 18,
+    marginBottom: 16,
+  },
+  feedbackInput: {
+    backgroundColor: "#F9FAFB",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 14,
+    padding: 14,
+    height: 90,
+    fontSize: 14,
+    color: "#111827",
+    marginBottom: 40,
+  },
+  modalButtonRow: { flexDirection: "row", gap: 10 },
+  modalBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalCancelBtn: { backgroundColor: "#F3F4F6" },
+  modalCancelBtnText: { color: "#4B5563", fontSize: 14, fontWeight: "600" },
+  modalConfirmBtn: { backgroundColor: "#111827" },
+  modalConfirmBtnText: { color: "#FFFFFF", fontSize: 14, fontWeight: "bold" },
 });

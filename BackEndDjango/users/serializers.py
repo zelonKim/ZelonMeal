@@ -25,8 +25,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "meal_style",
             "disease",
             "allergies",
+            "created_at",
         ]
-        read_only_fields = ["id", "username", "email"]
+        read_only_fields = ["id", "email", "created_at"]
 
     def validate_age(self, value):
         if value is not None and value < 0:

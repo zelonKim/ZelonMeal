@@ -1,14 +1,20 @@
+import { client } from "@/api/client";
+import { useQuery } from "@tanstack/react-query";
+import * as SecureStore from "expo-secure-store";
 import {
   ArrowLeft,
   ArrowRight,
   CalendarDays,
   Calendar as CalendarIcon,
 } from "lucide-react-native";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Dimensions,
   FlatList,
   Modal,
+  Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -18,7 +24,14 @@ import { Calendar as DatePicker } from "react-native-calendars";
 
 const { width, height } = Dimensions.get("window");
 const CARD_WIDTH = width * 0.9;
-const CARD_HEIGHT = height * 0.42;
+
+// 📝 식사 시간 매핑 이모지 딕셔너리
+const mealEmojiMap: Record<string, string> = {
+  BREAKFAST: "☀️ 아침",
+  LUNCH: "🍱 점심",
+  DINNER: "🌙 저녁",
+  SNACK: "🧁 간식",
+};
 
 export default function StatScreen() {
   const flatListRef = useRef<FlatList>(null);
@@ -29,12 +42,12 @@ export default function StatScreen() {
 
   const isAutoScrolling = useRef(false);
 
-  const [dailyStats, setDailyStats] = useState({
-    calories: 1850,
-    carbs: 210,
-    protein: 140,
-    fat: 55,
-  });
+  const RECOMMENDED_GOALS = {
+    calories: 2000,
+    carbs: 250,
+    protein: 120,
+    fat: 60,
+  };
 
   const getTargetDate = (indexOffset: number) => {
     const targetDate = new Date();
@@ -61,6 +74,21 @@ export default function StatScreen() {
     const date = String(d.getDate()).padStart(2, "0");
     return `${year}-${month}-${date}`;
   };
+
+  const currentFormattedDate = getFormattedYYYYMMDD(currentIndex);
+
+  const { data: serverStats, isLoading } = useQuery({
+    queryKey: ["dailyStats", currentFormattedDate],
+    queryFn: async () => {
+      const token = await SecureStore.getItemAsync("userToken");
+      const response = await client.get(
+        `/v1/meals/stats/?date=${currentFormattedDate}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      return response.data;
+    },
+    staleTime: 1000 * 60 * 5,
+  });
 
   const handleOpenModal = () => {
     setTempSelectedDate(getFormattedYYYYMMDD(currentIndex));
@@ -100,7 +128,7 @@ export default function StatScreen() {
     if (isAutoScrolling.current) return;
 
     const offset = e.nativeEvent.contentOffset.x;
-    const page = Math.floor((offset + width * 0.55) / width);
+    const page = Math.round(offset / width);
 
     if (page !== currentIndex && page >= 0 && page <= INITIAL_INDEX) {
       setCurrentIndex(page);
@@ -115,22 +143,23 @@ export default function StatScreen() {
     isAutoScrolling.current = false;
   };
 
-  useEffect(() => {
-    const seed = currentIndex % 5;
-    setDailyStats({
-      calories: 1700 + seed * 60,
-      carbs: 190 + seed * 10,
-      protein: 125 + seed * 8,
-      fat: 50 + seed * 3,
-    });
-  }, [currentIndex]);
-
   const jumpToPage = (targetIdx: number) => {
     if (targetIdx < 0 || targetIdx > INITIAL_INDEX) return;
 
     isAutoScrolling.current = true;
     setCurrentIndex(targetIdx);
     flatListRef.current?.scrollToIndex({ index: targetIdx, animated: true });
+  };
+
+  const getProgressWidth = (
+    current: number | undefined | null,
+    goal: number,
+  ) => {
+    const safeCurrent = current ?? 0;
+    if (safeCurrent <= 0 || !goal) return "0%";
+
+    const percentage = Math.min((safeCurrent / goal) * 100, 100);
+    return `${percentage}%`;
   };
 
   const virtualTimeline = Array.from(
@@ -142,70 +171,141 @@ export default function StatScreen() {
   const renderStatCard = ({ item }: { item: number }) => {
     const hasPastData = item > 0;
     const hasFutureData = item < INITIAL_INDEX;
+    const isCurrent = item === currentIndex;
+
+    const calories = isCurrent ? Number(serverStats?.calories ?? 0) : 0;
+    const carbs = isCurrent ? Number(serverStats?.carbohydrates ?? 0) : 0;
+    const protein = isCurrent ? Number(serverStats?.protein ?? 0) : 0;
+    const fat = isCurrent ? Number(serverStats?.fat ?? 0) : 0;
+
+    const menuNames = isCurrent ? serverStats?.menu_names || [] : [];
 
     return (
       <View style={styles.cardPage}>
         <View style={styles.statCardWrapper}>
+          {/* 🎯 [1층 메인 대시보드 카드]: 고정 높이 리밸런싱 완료 */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>🎯 영양성분 섭취 총량</Text>
-            <View style={styles.calorieBox}>
-              <Text style={styles.calorieLabel}>총 섭취 칼로리</Text>
-              <Text style={styles.calorieValue}>
-                {dailyStats.calories} <Text style={styles.unitText}>kcal</Text>
-              </Text>
-            </View>
 
-            <View style={styles.nutritionGrid}>
-              <View style={styles.nutriRow}>
-                <View style={styles.nutriMeta}>
-                  <Text style={styles.nutriLabel}>🌾 탄수화물</Text>
-                  <Text style={styles.nutriValue}>{dailyStats.carbs}g</Text>
-                </View>
-                <View style={styles.progressBg}>
-                  <View
-                    style={[
-                      styles.progressActive,
-                      { width: "65%", backgroundColor: "#FBBF24" },
-                    ]}
-                  />
-                </View>
+            {isCurrent && isLoading ? (
+              <View style={styles.cardCenterLoading}>
+                <ActivityIndicator size="large" color="#10B981" />
+                <Text style={styles.inlineLoadingText}>
+                  데이터를 불러오는 중...
+                </Text>
               </View>
-
-              <View style={styles.nutriRow}>
-                <View style={styles.nutriMeta}>
-                  <Text style={styles.nutriLabel}>🍗 단백질</Text>
-                  <Text style={[styles.nutriValue, { color: "#34D399" }]}>
-                    {dailyStats.protein}g
+            ) : (
+              <>
+                <View style={styles.calorieBox}>
+                  <Text style={styles.calorieLabel}>총 섭취 칼로리</Text>
+                  <Text style={styles.calorieValue}>
+                    {calories} <Text style={styles.unitText}>kcal</Text>
                   </Text>
                 </View>
-                <View style={styles.progressBg}>
-                  <View
-                    style={[
-                      styles.progressActive,
-                      { width: "85%", backgroundColor: "#34D399" },
-                    ]}
-                  />
-                </View>
-              </View>
 
-              <View style={styles.nutriRow}>
-                <View style={styles.nutriMeta}>
-                  <Text style={styles.nutriLabel}>🥑 지방</Text>
-                  <Text style={styles.nutriValue}>{dailyStats.fat}g</Text>
+                <View style={styles.nutritionGrid}>
+                  <View style={styles.nutriRow}>
+                    <View style={styles.nutriMeta}>
+                      <Text style={styles.nutriLabel}>🌾 탄수화물</Text>
+                      <Text style={styles.nutriValue_C}>{carbs}g</Text>
+                    </View>
+                    <View style={styles.progressBg}>
+                      <View
+                        style={[
+                          styles.progressActive,
+                          {
+                            width: getProgressWidth(
+                              carbs,
+                              RECOMMENDED_GOALS.carbs,
+                            ),
+                            backgroundColor: "#FBBF24",
+                          },
+                        ]}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.nutriRow}>
+                    <View style={styles.nutriMeta}>
+                      <Text style={styles.nutriLabel}>🍗 단백질</Text>
+                      <Text style={[styles.nutriValue, { color: "#34D399" }]}>
+                        {protein}g
+                      </Text>
+                    </View>
+                    <View style={styles.progressBg}>
+                      <View
+                        style={[
+                          styles.progressActive,
+                          {
+                            width: getProgressWidth(
+                              protein,
+                              RECOMMENDED_GOALS.protein,
+                            ),
+                            backgroundColor: "#34D399",
+                          },
+                        ]}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.nutriRow}>
+                    <View style={styles.nutriMeta}>
+                      <Text style={styles.nutriLabel}>🥑 지방</Text>
+                      <Text style={styles.nutriValue_F}>{fat}g</Text>
+                    </View>
+                    <View style={styles.progressBg}>
+                      <View
+                        style={[
+                          styles.progressActive,
+                          {
+                            width: getProgressWidth(fat, RECOMMENDED_GOALS.fat),
+                            backgroundColor: "#60A5FA",
+                          },
+                        ]}
+                      />
+                    </View>
+                  </View>
                 </View>
-                <View style={styles.progressBg}>
-                  <View
-                    style={[
-                      styles.progressActive,
-                      { width: "45%", backgroundColor: "#60A5FA" },
-                    ]}
-                  />
-                </View>
-              </View>
-            </View>
+              </>
+            )}
           </View>
 
-          {/* 🛠️ 단순 View 구조에서 터치가 가능하도록 TouchableOpacity 매핑 기동! */}
+          {/* 🌟 [2층 쉘]: 수직 패딩 압축 개조 완료 */}
+          <View style={styles.menuHistoryCard}>
+            <Text style={styles.menuHistoryTitle}>📋 섭취 식단 리스트</Text>
+
+            {isCurrent && isLoading ? (
+              <View style={styles.menuHorizontalLoadingBox}>
+                <ActivityIndicator size="small" color="#10B981" />
+              </View>
+            ) : menuNames.length > 0 ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={true}
+                nestedScrollEnabled={true}
+                contentContainerStyle={styles.horizontalScrollContent}
+              >
+                {menuNames.map((menu: any, index: number) => (
+                  <View key={index} style={styles.menuItemBadge}>
+                    <Text style={styles.menuItemTimeText}>
+                      {mealEmojiMap[menu.meal_time] || menu.meal_time}
+                    </Text>
+                    <Text style={styles.menuItemNameText} numberOfLines={1}>
+                      {menu.menu_name}
+                    </Text>
+                  </View>
+                ))}
+              </ScrollView>
+            ) : (
+              <View style={styles.emptyMenuBox}>
+                <Text style={styles.emptyMenuText}>
+                  해당 날짜의 식단 기록이 없습니다.
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* 🛠️ [3층 쉘]: 이탈 현상을 막고 시인성을 획기적으로 올린 알약 배지형 인디케이터 라우터 */}
           <View style={styles.swipeIndicatorRow}>
             {hasPastData && (
               <TouchableOpacity
@@ -213,7 +313,7 @@ export default function StatScreen() {
                 activeOpacity={0.6}
                 onPress={() => jumpToPage(item - 1)}
               >
-                <ArrowLeft size={14} color="#9CA3AF" />
+                <ArrowLeft size={13} color={"#10B981"} />
                 <Text style={styles.swipeHintText}>이전일</Text>
               </TouchableOpacity>
             )}
@@ -229,7 +329,7 @@ export default function StatScreen() {
                 onPress={() => jumpToPage(item + 1)}
               >
                 <Text style={styles.swipeHintText}>다음일</Text>
-                <ArrowRight size={14} color="#9CA3AF" />
+                <ArrowRight size={13} color={"#10B981"} />
               </TouchableOpacity>
             )}
           </View>
@@ -348,7 +448,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "transparent",
     alignItems: "center",
-    paddingTop: 20,
+    paddingTop: 48,
   },
   dateHeaderContainer: {
     flexDirection: "row",
@@ -376,7 +476,7 @@ const styles = StyleSheet.create({
     color: "#064E3B",
   },
   todayButton: {
-    backgroundColor: "#064E3B",
+    backgroundColor: "#10B981",
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 14,
@@ -389,6 +489,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   cardPage: {
+    marginTop: 45,
     width: width,
     alignItems: "center",
     justifyContent: "center",
@@ -401,41 +502,128 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: "#FFFFFF",
     width: "100%",
-    height: CARD_HEIGHT,
     borderRadius: 24,
-    padding: 24,
+    padding: 20,
     justifyContent: "space-between",
     shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.02,
-    shadowRadius: 10,
+    shadowRadius: 8,
     elevation: 3,
+    ...Platform.select({
+      ios: {
+        height: height * 0.32, // 🧼 세로 축소 양보 가드 발동
+      },
+      android: {
+        height: height * 0.41, // 🧼 안드로이드 비대함 리밸런싱 압축
+      },
+    }),
   },
-  swipeIndicatorRow: {
-    flexDirection: "row",
-    alignItems: "center",
+  cardCenterLoading: {
+    flex: 1,
     justifyContent: "center",
-    marginTop: 18,
-  },
-  // 🛠️ 사용자가 터치하기 편하도록 가로/세로 여백 패딩을 부여했습니다.
-  indicatorBlock: {
-    flexDirection: "row",
     alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    gap: 8,
   },
-  indicatorDivider: {
-    width: 1,
-    height: 10,
-    backgroundColor: "#E5E7EB",
-    marginHorizontal: 4, // 패딩 영역 확대로 마진 폭 최적화 조정
-  },
-  swipeHintText: {
+  inlineLoadingText: {
     fontSize: 12,
     color: "#9CA3AF",
     fontWeight: "600",
   },
+  menuHistoryCard: {
+    backgroundColor: "#FFFFFF",
+    width: "100%",
+    borderRadius: 20,
+    paddingVertical: 19,
+    marginTop: 20,
+    paddingHorizontal: 16,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.01,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  menuHistoryTitle: {
+    fontSize: 13,
+    fontWeight: "bold",
+    color: "#374151",
+    marginBottom: 12,
+    paddingHorizontal: 5,
+  },
+  horizontalScrollContent: {
+    gap: 12,
+  },
+  menuItemBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F3F4F6",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  menuItemTimeText: {
+    fontSize: 11,
+    fontWeight: "bold",
+    color: "#6B7280",
+    marginRight: 9,
+  },
+  menuItemNameText: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: "#374151",
+    maxWidth: width * 0.95,
+  },
+  menuHorizontalLoadingBox: {
+    height: 40,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  emptyMenuBox: {
+    backgroundColor: "#F9FAFB",
+    paddingVertical: 11,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginHorizontal: 10,
+  },
+  emptyMenuText: {
+    fontSize: 12,
+    color: "#9CA3AF",
+    fontWeight: "500",
+  },
+
+  // 🌟 [전면 리폼] 배경 유실 버그를 완벽히 격파한 알약 프레임 워크 인디케이터 스펙
+  swipeIndicatorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 8,
+    width: "100%",
+  },
+  indicatorBlock: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingHorizontal: 24,
+    paddingVertical: 9, // 🧼 높이를 압축하여 세로 한계선 돌파 가드 가동
+    backgroundColor: "#F3F4F6", // 👈 은은하고 정돈된 전용 백그라운드 쉴드 장착
+    borderRadius: 10,
+  },
+  swipeHintText: {
+    fontSize: 12,
+    color: "#10B981", // 👈 시인성이 가장 뛰어난 딥 차콜 그레이 폰트 스위칭
+    fontWeight: "500",
+  },
+  indicatorDivider: {
+    width: 1,
+    height: 12,
+    backgroundColor: "#D1D5DB",
+    marginHorizontal: 12,
+  },
+
   cardTitle: {
     fontSize: 15,
     fontWeight: "bold",
@@ -443,29 +631,31 @@ const styles = StyleSheet.create({
   },
   calorieBox: {
     backgroundColor: "#F9FAFB",
-    paddingVertical: 16,
+    paddingVertical: 12,
     borderRadius: 16,
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#F3F4F6",
+    marginVertical: 6,
   },
   calorieLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#9CA3AF",
-    marginBottom: 4,
+    fontWeight: "500",
+    marginBottom: 2,
   },
   calorieValue: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: "bold",
-    color: "#111827",
+    color: "#EF4444",
   },
   unitText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
-    color: "#9CA3AF",
+    color: "#EF4444",
   },
   nutritionGrid: {
-    gap: 12,
+    gap: 10,
   },
   nutriRow: {
     width: "100%",
@@ -475,18 +665,20 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 4,
-    paddingHorizontal: 2,
+    paddingHorizontal: 1,
   },
   nutriLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "600",
-    color: "#4B5563",
+    color: "#6B7280",
   },
   nutriValue: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "bold",
     color: "#111827",
   },
+  nutriValue_C: { fontSize: 13, fontWeight: "bold", color: "#FBBF24" },
+  nutriValue_F: { fontSize: 13, fontWeight: "bold", color: "#60A5FA" },
   progressBg: {
     width: "100%",
     height: 8,

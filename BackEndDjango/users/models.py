@@ -57,5 +57,9 @@ class User(AbstractUser):
 
     REQUIRED_FIELDS = ["username"]
 
+    created_at = models.DateTimeField(
+        auto_now_add=True, verbose_name="생성일/식단시작일"
+    )
+
     def __str__(self):
         return self.email

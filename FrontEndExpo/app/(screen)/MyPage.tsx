@@ -1,6 +1,6 @@
-import { client } from "@/api/client"; // 🌐 Axios 인스턴스
+import { client } from "@/api/client";
 import { useAuth } from "@/app/_layout";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"; // 🔄 상태 관리 3총사
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import {
@@ -18,6 +18,7 @@ import {
   FlatList,
   Modal,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -43,8 +44,13 @@ export default function MyPageScreen() {
   const [currentStep, setCurrentStep] = useState(0);
   const [menuVisible, setMenuVisible] = useState(false);
 
+  // 닉네임 수정 팝업 제어용 레이어 상태
+  const [nicknameModalVisible, setNicknameModalVisible] = useState(false);
+  const [newUsername, setNewUsername] = useState("");
+
   const [userInfo, setUserInfo] = useState({
     email: "",
+    username: "",
     age: "",
     gender: "M",
     current_weight: "",
@@ -53,12 +59,13 @@ export default function MyPageScreen() {
     meal_style: "MIXED",
     disease: "",
     allergies: "",
+    created_at: "",
   });
 
   // ------------------------------------------
   // 1️⃣ [GET] 로그인한 유저 프로필 조회 API 연동
   // ------------------------------------------
-  const { isLoading, isError } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["userProfile"],
     queryFn: async () => {
       const token = await SecureStore.getItemAsync("userToken");
@@ -70,24 +77,44 @@ export default function MyPageScreen() {
     placeholderData: (previousData) => previousData,
   });
 
-  const queryData = queryClient.getQueryData<any>(["userProfile"]);
-
   useEffect(() => {
-    if (queryData) {
+    if (data) {
       setUserInfo({
-        email: queryData.email || "알 수 없는 유저",
-        age: String(queryData.age || ""),
-        gender: queryData.gender || "M",
-        current_weight: String(queryData.current_weight || ""),
-        goal_weight: String(queryData.goal_weight || ""),
-        purpose: queryData.purpose || "LOSS",
-        meal_style: queryData.meal_style || "MIXED",
-        disease: queryData.disease || "",
-        allergies: queryData.allergies || "",
+        email: data.email || "",
+        username: data.username || "",
+        age: String(data.age || ""),
+        gender: data.gender || "M",
+        current_weight: String(data.current_weight || ""),
+        goal_weight: String(data.goal_weight || ""),
+        purpose: data.purpose || "LOSS",
+        meal_style: data.meal_style || "MIXED",
+        disease: data.disease || "",
+        allergies: data.allergies || "",
+        created_at: data.created_at || "",
       });
     }
-  }, [queryData]);
+  }, [data]);
 
+  // 가입일 기반 오늘이 몇 일차인지 디데이 계산기 파이프라인
+  const getMealDayCount = (createdAtStr: string) => {
+    if (!createdAtStr) return "식단 1일차";
+
+    try {
+      const startDate = new Date(createdAtStr.split("T")[0]);
+      const today = new Date();
+
+      const diffTime = today.getTime() - startDate.getTime();
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+      return `식단 ${diffDays > 0 ? diffDays : 1}일차`;
+    } catch (e) {
+      return "식단 1일차";
+    }
+  };
+
+  // ------------------------------------------
+  // 2️⃣ [PATCH] 유저 신체 스펙 정보 수정 API 연동
+  // ------------------------------------------
   const updateProfileMutation = useMutation({
     mutationFn: async (updatedData: typeof userInfo) => {
       const token = await SecureStore.getItemAsync("userToken");
@@ -114,7 +141,7 @@ export default function MyPageScreen() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["userProfile"] });
-      Alert.alert("저장 완료", "유저 정보가 성공적으로 변경되었습니다! ");
+      Alert.alert("저장 완료", "유저 정보가 성공적으로 변경되었습니다!");
     },
     onError: () => {
       Alert.alert(
@@ -124,8 +151,69 @@ export default function MyPageScreen() {
     },
   });
 
+  // ------------------------------------------
+  // 3️⃣ [PATCH] 유저 닉네임(username) 단독 수정 API 연동
+  // ------------------------------------------
+  const updateNicknameMutation = useMutation({
+    mutationFn: async (newNickname: string) => {
+      const token = await SecureStore.getItemAsync("userToken");
+      const response = await client.patch(
+        "/v1/users/profile/",
+        { username: newNickname },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["userProfile"] });
+      setNicknameModalVisible(false);
+      Alert.alert("변경 완료", "닉네임이 성공적으로 변경되었습니다!");
+    },
+    onError: (error: any) => {
+      const serverError =
+        error.response?.data?.username?.[0] ||
+        "닉네임 변경 중 오류가 발생했습니다.";
+      Alert.alert("변경 실패", serverError);
+    },
+  });
+
   const handleSaveChanges = () => {
     updateProfileMutation.mutate(userInfo);
+  };
+
+  const handleChangeNickname = () => {
+    setMenuVisible(false);
+    setNewUsername(userInfo.username);
+    setNicknameModalVisible(true);
+  };
+
+  const handleConfirmNickname = () => {
+    if (!newUsername.trim()) {
+      Alert.alert("입력 오류", "닉네임을 한 글자 이상 입력해 주세요.");
+      return;
+    }
+    updateNicknameMutation.mutate(newUsername.trim());
+  };
+
+  const handleLogout = () => {
+    setMenuVisible(false);
+    Alert.alert("로그아웃", "정말 로그아웃 하시겠습니까?", [
+      { text: "취소", style: "cancel" },
+      {
+        text: "확인",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await SecureStore.deleteItemAsync("userToken");
+            await SecureStore.deleteItemAsync("refreshToken");
+            await checkAuthStatus();
+            router.push("/(auth)/login");
+          } catch (e) {
+            Alert.alert("오류", "로그아웃 중 문제가 발생했습니다.");
+          }
+        },
+      },
+    ]);
   };
 
   const genderChoices = [
@@ -158,41 +246,8 @@ export default function MyPageScreen() {
     }
   };
 
-  const handleChangeNickname = () => {
-    setMenuVisible(false);
-    Alert.prompt(
-      "닉네임 변경",
-      "새로운 닉네임 또는 이메일을 입력하세요.",
-      [{ text: "취소", style: "cancel" }, { text: "변경" }],
-      "plain-text",
-      userInfo.email,
-    );
-  };
-
-  const handleLogout = () => {
-    setMenuVisible(false);
-    Alert.alert("로그아웃", "정말 로그아웃 하시겠습니까?", [
-      { text: "취소", style: "cancel" },
-      {
-        text: "확인",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await SecureStore.deleteItemAsync("userToken");
-            await SecureStore.deleteItemAsync("refreshToken");
-            await checkAuthStatus();
-            router.push("/(auth)/login");
-          } catch (e) {
-            Alert.alert("오류", "로그아웃 중 문제가 발생했습니다.");
-          }
-        },
-      },
-    ]);
-  };
-
   const stepsData = [0, 1, 2, 3];
 
-  // 로딩 및 에러 스크린 디펜스
   if (isLoading) {
     return (
       <View style={styles.centerContainer}>
@@ -377,26 +432,46 @@ export default function MyPageScreen() {
 
   return (
     <View style={styles.mainContainer}>
-      {/* 1. 프로필 헤더 영역 */}
+      {/* 🚀 전용 민트 배너 내부 우측 상단에 정교하게 배치된 프리미엄 디데이 뱃지 레이아웃 */}
       <View style={styles.profileHeader}>
         <View style={styles.profileInfoLeft}>
+          {/* 아바타 영역 (텍스트 공백 싹 제거하여 크래시 완전 방멸) */}
           <TouchableOpacity
-            style={styles.avatarCircle}
+            style={styles.avatarBorderRing}
             onPress={() => setMenuVisible(true)}
-            activeOpacity={0.7}
+            activeOpacity={0.8}
           >
-            <UserIcon size={26} color="#064E3B" />
+            <View style={styles.avatarCircle}>
+              <UserIcon size={24} color="#059669" />
+            </View>
           </TouchableOpacity>
-          <View style={styles.headerTextSide}>
-            <Text style={styles.emailText} numberOfLines={1}>
-              {userInfo.email}
+
+          <Pressable onPress={() => setMenuVisible(true)}>
+            {/* 텍스트 영역: 서브 정보 가독성 보강 */}
+            <View style={styles.headerTextSide}>
+              <View style={styles.nameBadgeRow}>
+                <Text style={styles.usernameText} numberOfLines={1}>
+                  {userInfo.username || "이름 없음"}
+                </Text>
+                <Text style={styles.nimText}>님</Text>
+              </View>
+              <View style={styles.infoRowUnder}>
+                <Text style={styles.subText}>
+                  {userInfo.email || "이메일 정보 없음"}
+                </Text>
+              </View>
+            </View>
+          </Pressable>
+          {/* 🎯 [신규 이식] 프로필 헤더 카드 우측 상단에 절묘하게 흐르는 스페셜 그린 뱃지 */}
+          <View style={styles.badgeAbsolutePosition}>
+            <Text style={styles.badgeTextLayout}>
+              {getMealDayCount(userInfo.created_at)}
             </Text>
-            <Text style={styles.subText}>AI 웰니스 신체 스펙 맞춤 관리</Text>
           </View>
         </View>
       </View>
 
-      {/* 2. 드롭다운 모달 */}
+      {/* 아바타 드롭다운 모달 */}
       <Modal
         visible={menuVisible}
         transparent
@@ -425,9 +500,62 @@ export default function MyPageScreen() {
         </TouchableWithoutFeedback>
       </Modal>
 
-      {/* 🌟 3. 카드 + 인디케이터 + 버튼을 하나의 쫀쫀한 그룹으로 묶는 컨테이너 컨셉 */}
+      {/* 닉네임 입력 전용 프레임 모달 */}
+      <Modal
+        visible={nicknameModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setNicknameModalVisible(false)}
+      >
+        <View style={styles.modalOverlayCenter}>
+          <View style={styles.nicknameModalBox}>
+            <Text style={styles.nicknameModalTitle}>✏️ 닉네임 변경</Text>
+            <Text style={styles.nicknameModalSub}>
+              ZelonMeal에서 사용할 새로운 닉네임을 적어주세요.
+            </Text>
+
+            <TextInput
+              style={styles.nicknameInput}
+              value={newUsername}
+              onChangeText={setNewUsername}
+              placeholder="변경할 닉네임 입력"
+              maxLength={15}
+              autoFocus={true}
+              autoCapitalize="none"
+              clearButtonMode="while-editing"
+            />
+
+            <View style={styles.nicknameButtonRow}>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.modalCancelBtn]}
+                onPress={() => setNicknameModalVisible(false)}
+              >
+                <Text style={styles.modalCancelBtnText}>취소</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.modalBtn,
+                  styles.modalConfirmBtn,
+                  updateNicknameMutation.isPending &&
+                    styles.modalConfirmBtnDisabled,
+                ]}
+                onPress={handleConfirmNickname}
+                disabled={updateNicknameMutation.isPending}
+              >
+                {updateNicknameMutation.isPending ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.modalConfirmBtnText}>변경 완료</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 카드 슬라이드 본체 패널 가드 */}
       <View style={styles.contentCenterWrapper}>
-        {/* FlatList가 무한정 세로로 늘어나며 아래 버튼을 밀어내지 못하게 고정 높이 부여 */}
         <View style={{ height: CARD_HEIGHT }}>
           <FlatList
             ref={flatListRef}
@@ -448,7 +576,6 @@ export default function MyPageScreen() {
           />
         </View>
 
-        {/* 🌟 카드 바로 밑에 16px의 균일한 거리로 달라붙는 점 인디케이터 */}
         <View style={styles.dotContainer}>
           {[0, 1, 2, 3].map((index) => (
             <View
@@ -461,7 +588,6 @@ export default function MyPageScreen() {
           ))}
         </View>
 
-        {/* 🌟 인디케이터 밑에 24px의 적당한 거리를 두고 배치되는 일체형 변경하기 버튼 */}
         <TouchableOpacity
           style={[
             styles.saveButton,
@@ -487,20 +613,16 @@ export default function MyPageScreen() {
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
-    // backgroundColor: "#F9FAFB", // 배경색을 미세하게 주어 카드 하이라이트 효과 극대화
     alignItems: "center",
-    paddingTop: Platform.OS === "ios" ? 12 : 24,
+    paddingTop: 28,
   },
-
-  // 🌟 [신규] 카드와 조작 컴포넌트들을 화면 세로 기준 정중앙으로 밀집시키는 핵심 껍데기
   contentCenterWrapper: {
     flex: 1,
-    justifyContent: "center", // 🎯 자식 요소들을 상하 정중앙에 모아줌으로써 붕 뜨는 현상 전면 차단!
+    justifyContent: "flex-start",
     alignItems: "center",
     width: "100%",
-    paddingBottom: Platform.OS === "ios" ? 40 : 20, // 하단 탭바 레이어 안전 회피 가드 마감
+    paddingBottom: Platform.OS === "ios" ? 40 : 20,
   },
-
   centerContainer: {
     flex: 1,
     justifyContent: "center",
@@ -514,48 +636,101 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   profileHeader: {
+    position: "relative", // 👈 내부 자식 요소의 절대 좌표 배치를 잡기 위한 기준점 마련
     flexDirection: "row",
     alignItems: "center",
     width: CARD_WIDTH,
-    marginTop: 10,
-    marginBottom: 10,
-    paddingHorizontal: 4,
+    marginTop: 20,
+    marginBottom: 69,
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    backgroundColor: "#E6F4EE",
+    borderRadius: 24,
+    shadowColor: "#10B981",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
   },
   profileInfoLeft: {
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
   },
+  avatarBorderRing: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: "#FFFFFF",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 16,
+  },
   avatarCircle: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#E6ECE8",
+    backgroundColor: "#F0FAF5",
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
   },
   headerTextSide: {
     justifyContent: "center",
     flex: 1,
   },
-  emailText: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#1F2937",
+  nameBadgeRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+  },
+  usernameText: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#047857",
+    letterSpacing: -0.6,
+  },
+  nimText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#047857",
+    marginLeft: 3,
+  },
+  infoRowUnder: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 5,
   },
   subText: {
-    fontSize: 12,
-    color: "#9CA3AF",
-    marginTop: 1,
+    fontSize: 13,
+    color: "#047857", // 가독성을 보완하기 위한 조명 최적화 소프트 에메랄드 그린
+    fontWeight: "500",
   },
 
-  // 🚀 [수정] 대하소설 같던 가로 폭을 카드의 크기와 싱크로율 100%로 일치시켜 일체감 부여
+  // 🌟 [신규 스타일] 프로필 배너 우측 상단에 딱 붙을 럭셔리 네이티브 뱃지 좌표계
+  badgeAbsolutePosition: {
+    position: "absolute",
+    top: -2,
+    right: -2,
+    backgroundColor: "#4FA082", // 활력 가득한 비비드 그린 솔리드 매칭
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    shadowColor: "#10B981",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  badgeTextLayout: {
+    fontSize: 11,
+    fontWeight: "900", // 숫자가 직관적으로 튀어나오도록 최고 볼드 적용
+    color: "#FFFFFF", // 흰색 폰트로 가독성 백퍼센트 확보
+  },
+
   saveButton: {
     flexDirection: "row",
     backgroundColor: "#10B981",
-    width: CARD_WIDTH, // 🎯 카드가 가로 폭 90%이므로 버튼도 동일하게 맞춰 고급스러운 테일러드 룩 연출!
-    height: 52, // 터치하기 딱 좋은 피트니스 규격 높이
+    width: CARD_WIDTH,
+    height: 52,
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
@@ -577,10 +752,80 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.03)",
   },
+  modalOverlayCenter: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  nicknameModalBox: {
+    backgroundColor: "#FFFFFF",
+    width: width * 0.84,
+    borderRadius: 20,
+    padding: 24,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  nicknameModalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#111827",
+    marginBottom: 6,
+  },
+  nicknameModalSub: {
+    fontSize: 13,
+    color: "#6B7280",
+    lineHeight: 18,
+    marginBottom: 20,
+  },
+  nicknameInput: {
+    backgroundColor: "#F3F4F6",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 15,
+    color: "#111827",
+    marginBottom: 20,
+  },
+  nicknameButtonRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  modalBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalCancelBtn: {
+    backgroundColor: "#F3F4F6",
+  },
+  modalCancelBtnText: {
+    color: "#4B5563",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  modalConfirmBtn: {
+    backgroundColor: "#10B981",
+  },
+  modalConfirmBtnDisabled: {
+    backgroundColor: "#A7F3D0",
+  },
+  modalConfirmBtnText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
   dropdownMenu: {
     position: "absolute",
-    top: Platform.OS === "ios" ? 120 : 100,
-    left: width * 0.05,
+    top: Platform.OS === "ios" ? 165 : 155,
+    left: width * 0.15,
     backgroundColor: "#FFFFFF",
     width: 160,
     borderRadius: 14,
@@ -624,7 +869,7 @@ const styles = StyleSheet.create({
     height: CARD_HEIGHT,
     borderRadius: 24,
     paddingHorizontal: 24,
-    paddingVertical: 20,
+    paddingVertical: 21,
     justifyContent: "space-between",
     shadowColor: "#000000",
     shadowOffset: { width: 0, height: 4 },
@@ -760,15 +1005,13 @@ const styles = StyleSheet.create({
     color: "#064E3B",
     fontWeight: "bold",
   },
-
-  // 🚀 [수정] 카드 바로 밑에 이쁘게 안착하도록 마진 싹 다이어트!
   dotContainer: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     gap: 10,
-    marginTop: 16, // 🎯 카드 하단 경계면으로부터 딱 16px 떨어트리기
-    marginBottom: 24, // 🎯 아래 변경하기 버튼과 딱 24px 스페이싱 유지
+    marginTop: 16,
+    marginBottom: 24,
   },
   dot: {
     height: 6,

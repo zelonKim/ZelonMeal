@@ -8,6 +8,8 @@ from rest_framework.permissions import IsAuthenticated
 from .models import DailyMealPlan, MealItem
 from .serializers import DailyMealPlanSerializer
 from django.db import transaction
+from datetime import datetime
+from django.db.models import Sum
 
 
 class TodayMealView(APIView):
@@ -56,7 +58,6 @@ class RecommendMealView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # ⭐️ 2. 어제 날짜 계산 및 실제 먹은 식단(is_eaten=True) 조회 로직 추가
         yesterday = today - timedelta(days=1)
         yesterday_plan = DailyMealPlan.objects.filter(user=user, date=yesterday).first()
 
@@ -283,14 +284,14 @@ class ReRecommendMealView(APIView):
         today = date.today()
         user_feedback = request.data.get("user_feedback", None)
 
-        # 1. 유저의 한 줄 피드백이 비어있으면 즉시 컷
+        # 1. 유저의 피드백이 비어있으면 즉시 컷
         if not user_feedback:
             return Response(
                 {"detail": "식단을 보완할 피드백 내용을 입력해주세요."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # 2. 오늘 자 기존 식단 플랜이 있는지 확인
+        # 2. 오늘의 기존 식단 플랜이 있는지 확인
         daily_plan = (
             DailyMealPlan.objects.filter(user=user, date=today)
             .prefetch_related("menu_list")
@@ -299,16 +300,24 @@ class ReRecommendMealView(APIView):
         if not daily_plan:
             return Response(
                 {
-                    "detail": "오늘 생성된 식단 플랜이 없습니다. 먼저 최초 추천을 받아보세요."
+                    "detail": "오늘 생성된 식단 플랜이 없습니다. 먼저 식단 추천을 받아보세요."
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # 3. 기존에 추천받았던 메뉴 이름들을 리스트로 싹 수집
+        # 3. 기존에 추천받았던 메뉴들을 리스트로 싹 수집
         current_menu_list = list(
-            daily_plan.menu_list.values_list("menu_name", flat=True)
+            daily_plan.menu_list.values(
+                "id",
+                "meal_time",
+                "menu_name",
+                "calories",
+                "carbohydrates",
+                "protein",
+                "fat",
+                "recipe",
+            )
         )
-
         # 4. FastAPI로 보낼 패이로드 조립
         payload = {
             "user_id": user.id,
@@ -320,8 +329,8 @@ class ReRecommendMealView(APIView):
             "meal_style": user.meal_style,
             "disease": user.disease,
             "allergies": user.allergies,
-            "current_menu_list": current_menu_list,
             "user_feedback": user_feedback,
+            "current_menu_list": current_menu_list,
         }
 
         BASE_URL = os.getenv("FASTAPI_URL")
@@ -367,18 +376,82 @@ class ReRecommendMealView(APIView):
                         carbohydrates=item["carbohydrates"],
                         protein=item["protein"],
                         fat=item["fat"],
-                        recipe=item.get("recipe"),
+                        recipe=item.get("recipe", "레시피 없음"),
                     )
                 )
-            # 신상 메뉴들 대량 적재 🚀
             MealItem.objects.bulk_create(meal_items)
 
-        # 6. 바뀐 최종 하루 식단 이쁘게 반환
         serializer = DailyMealPlanSerializer(daily_plan)
         return Response(
             {
-                "message": "유저 피드백을 바탕으로 오늘의 식단이 완벽히 재구성되었습니다. 🔄",
+                "message": "유저의 피드백을 바탕으로 오늘의 식단이 재구성되었습니다. 🔄",
                 "data": serializer.data,
             },
             status=status.HTTP_200_OK,
         )
+
+
+################################
+
+
+class DailyStatView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        date_str = request.query_params.get("date", None)
+
+        if not date_str:
+            return Response(
+                {"detail": "date 파라미터가 누락되었습니다."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            stats_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError:
+            return Response(
+                {"detail": "올바른 날짜 포맷(YYYY-MM-DD)이 아닙니다."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        meal_plan = DailyMealPlan.objects.filter(user=user, date=stats_date).first()
+
+        if not meal_plan:
+            return Response(
+                {
+                    "date": date_str,
+                    "calories": 0,
+                    "carbohydrates": 0,
+                    "protein": 0,
+                    "fat": 0,
+                    "menu_names": [],
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        consumed_items = meal_plan.menu_list.filter(is_eaten=True)
+
+        consumed_stats = consumed_items.aggregate(
+            total_calories=Sum("calories"),
+            total_carbs=Sum("carbohydrates"),
+            total_protein=Sum("protein"),
+            total_fat=Sum("fat"),
+        )
+
+        menu_names = list(consumed_items.values("meal_time", "menu_name"))
+
+        return Response(
+            {
+                "date": date_str,
+                "calories": consumed_stats["total_calories"] or 0,
+                "carbohydrates": consumed_stats["total_carbs"] or 0,
+                "protein": consumed_stats["total_protein"] or 0,
+                "fat": consumed_stats["total_fat"] or 0,
+                "menu_names": menu_names,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+##############################

@@ -1,6 +1,12 @@
 import { ChartColumnIncreasing, User, Utensils } from "lucide-react-native";
 import React, { useState } from "react";
-import { Dimensions, StyleSheet, TouchableOpacity, View } from "react-native";
+import {
+  Dimensions,
+  Platform,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import MyPage from "./MyPage";
 import Stats from "./Stats";
@@ -89,7 +95,6 @@ const styles = StyleSheet.create({
   // 🟢 플로팅 버튼 3개를 화면 중앙 하단에 이쁘게 모아주는 컨테이너
   floatingButtonContainer: {
     position: "absolute",
-    bottom: 50, // 하단에서 여유 있게 띄움
     left: 0,
     right: 0,
     flexDirection: "row",
@@ -97,6 +102,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: width * 0.06, // 💡 디바이스 너비 비례 쫀쫀한 간격 (약 20~25px 내외)
     pointerEvents: "box-none", // 버튼 영역 외 터치가 씹히는 RN 버그 방지 가드
+    ...Platform.select({
+      ios: {
+        bottom: 50,
+      },
+      android: {
+        bottom: 60,
+      },
+    }),
   },
 
   // 동글동글하고 입체감 넘치는 플로팅 버튼 기본 스타일 (기본 흰색)
@@ -107,8 +120,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     justifyContent: "center",
     alignItems: "center",
-
-    // 🔥 버튼이 화면 위에 둥둥 떠 있는 느낌을 주는 고급 그림자 효과
     shadowColor: "#000000",
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.08,

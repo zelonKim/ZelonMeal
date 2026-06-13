@@ -61,6 +61,7 @@ def get_ai_recommendation(data: DjangoPayload):
             
             위의 유저 정보와 중요 지침을 바탕으로 유저에게 완벽히 최적화된 하루 식단(BREAKFAST, LUNCH, DINNER, SNACK)을 짜줘.
             단, '어제 실제로 섭취한 식단'과 겹치는 메뉴는 가급적 피해서 다채롭게 구성해줘.
+            보유 질환에 해롭거나 보유 알레르기를 유발하는 식재료는 절대 포함하지 말아줘.
             각 메뉴마다 초보자도 쉽게 따라할 수 있는 단계별 조리법(recipe)을 반드시 한글로 작성해줘.
             """
 
@@ -129,7 +130,7 @@ def analyze_nutrition(data: AnalyzeMenuPayload):
 
 
 @app.post("/ai/v1/rerecommend", response_model=AIRecommendResponse)
-def get_ai_rerecommendation(data: AIReRecommendPayload):
+def get_ai_rerecommend(data: AIReRecommendPayload):
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise HTTPException(
@@ -140,7 +141,20 @@ def get_ai_rerecommendation(data: AIReRecommendPayload):
     try:
         client = OpenAI(api_key=api_key)
 
-        # 💡 기존 식단을 어떻게 보완해야 하는지 인지시키는 고도화된 재추천 프롬프트
+        existing_menus_context = ""
+
+        for menu in data.current_menu_list:
+            existing_menus_context += (
+                f"- 식사 타임:[{menu.meal_time}] "
+                f"- 음식 이름: {menu.menu_name} "
+                f"- 칼로리: ({menu.calories}kcal"
+                f"- 탄수화물: {menu.carbohydrates}g"
+                f"- 단백질: {menu.protein}g"
+                f"- 지방: {menu.fat}g)"
+                f"- 요리 레시피: {menu.recipe}\n"
+            )
+
+        # 💡 유저가 원한 시간대만 바꾸고, 나머지는 '기존 것 복사'하도록 강제하는 초고도화 프롬프트
         rerecommend_prompt = f"""
             [유저 기본 정보]:
             - 나이: {data.age}세, 
@@ -152,25 +166,30 @@ def get_ai_rerecommendation(data: AIReRecommendPayload):
             - 보유 질환: {data.disease} 
             - 보유 알레르기: {data.allergies}
 
-            [기존 추천 식단]:
-            - {", ".join(data.current_menu_list)}
+            [기존 추천 식단 상세 스펙 (BREAKFAST, LUNCH, DINNER, SNACK)]:
+            {existing_menus_context}
 
-            [유저의 피드백]:
+            [유저 피드백]:
             - "{data.user_feedback}"
 
-            [재추천 지침]
-            1. [유저의 피드백]을 최우선적으로 반영하여 하루 식단(BREAKFAST, LUNCH, DINNER, SNACK)을 '새롭게' 리뉴얼해줘.
-            2. [기존 추천 식단] 중에서 유저가 불만을 가지거나 변경을 원하는 카테고리는 확실하게 다른 메뉴로 교체해줘.
-            3. 선호 식단 스타일과 유저의 식단 목적에 맞는 칼로리/탄수화물/단백질/지방 밸런스는 무너지지 않도록 계산해줘.
-            4. 각 메뉴마다 초보자도 쉽게 따라할 수 있는 단계별 조리법(recipe)을 반드시 한글로 작성해줘.
+            [재추천 지침 - 중요 🚨]
+            1. [유저 피드백]을 꼼꼼히 분석하여, 유저가 수정을 요구하는 '특정 식사 시간대(예: 점심만 혹은 저녁만)'가 어디인지 먼저 파악하세요.
+            2. 유저가 수정을 요구한 특정 시간대의 식사만 [유저 피드백]에 맞추어 메뉴 이름, 칼로리, 탄수화물/단백질/지방 수치, 레시피를 새롭게 생성 및 변경하세요.
+            3. 유저가 피드백에서 언급하지 않은 '다른 모든 시간대의 식사'는 [기존 추천 식단]에 명시된 menu_name, calories, carbohydrates, protein, fat, recipe 데이터를 그대로 똑같이 복사하여 유지하세요. 마음대로 리뉴얼하거나 미세 조정하지 마세요.
+            4. 유저가 칼로리, 탄수화물, 단백질, 지방 수치의 변경을 원할 경우에는 그에 맞춰 새로운 메뉴로 바꾸세요.
+            5. 각 메뉴마다 초보자도 쉽게 따라할 수 있는 단계별 조리법(recipe)을 반드시 한글로 작성해주세요. (유지되는 식사는 기존 레시피를 그대로 복사해주세요)
+            6. 보유 질환에 해롭거나 보유 알레르기를 유발하는 식재료는 식단에 절대로 포함하지 마세요.
         """
-
         completion = client.beta.chat.completions.parse(
             model="gpt-4o-mini",
             messages=[
                 {
                     "role": "system",
-                    "content": "너는 유저의 피드백을 적극 수용하여 기존의 짜여진 식단을 보완해주는 일대일 맞춤형 AI 영양사야.",
+                    "content": (
+                        "너는 유저 피드백을 반영하여 기존 식단을 맞춤형으로 보완하는 전문 AI 영양사야. "
+                        "반드시 유저가 수정을 요구한 시간대의 식사만 새롭게 변경하고, 언급되지 않은 나머지 식사들은 "
+                        "기존에 제공된 원본 데이터를 그대로 유지해야해"
+                    ),
                 },
                 {"role": "user", "content": rerecommend_prompt},
             ],
@@ -181,5 +200,5 @@ def get_ai_rerecommendation(data: AIReRecommendPayload):
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"AI 재추천 식단 생성 중 오류 발생: {str(e)}",
+            detail=f"AI 식단 재추천 중 오류 발생: {str(e)}",
         )

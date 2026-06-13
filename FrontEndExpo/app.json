@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "FrontEndExpo",
-    "slug": "FrontEndExpo",
+    "name": "ZelonMeal",
+    "slug": "zelonmeal",
+    "scheme": "zelonmeal",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "frontendexpo",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -17,22 +17,33 @@
       "supportsTablet": true
     },
     "android": {
+      "intentFilters": [],
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
       "softwareKeyboardLayoutMode": "pan",
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.zelon.zelonmeal"
     },
     "web": {
       "bundler": "metro",
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
-    "plugins": ["expo-router", "expo-secure-store"],
+    "plugins": [
+      "expo-router",
+      "expo-secure-store"
+    ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "7b937a9f-a68c-4397-9dc9-81fc9842e3aa"
+      }
     }
   }
 }

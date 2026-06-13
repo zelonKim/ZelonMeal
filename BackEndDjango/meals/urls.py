@@ -5,6 +5,7 @@ from .views import (
     SearchMealPlanView,
     ReRecommendMealView,
     TodayMealView,
+    DailyStatView,
 )
 
 
@@ -15,4 +16,5 @@ urlpatterns = [
     path("search/", SearchMealPlanView.as_view(), name="daily-meal-plan"),
     path("items/<int:item_id>/", MealItemUpdateView.as_view(), name="meal-item-update"),
     path("rerecommend/", ReRecommendMealView.as_view(), name="meal-rerecommend"),
+    path("stats/", DailyStatView.as_view(), name="daily-stats"),
 ]
