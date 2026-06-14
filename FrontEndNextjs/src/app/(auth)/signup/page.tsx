@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useRouter } from "next/navigation"; // 🌟 Next.js 16 App Router 전용 라우터
+import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { client } from "@/api/client";
 import { RefreshCw, Mail, Lock, CheckCircle2, ArrowRight } from "lucide-react";
@@ -15,30 +15,26 @@ export default function SignUpScreen() {
   const [passwordConfirm, setPasswordConfirm] = useState("");
 
   const validateForm = () => {
-    // 1. 이메일 형식 정규식 검사
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      alert("올바른 이메일 형식이 아닙니다.");
+      alert("올바른 이메일 형식이 아닙니다. 🙅‍♂️");
       return false;
     }
 
-    // 2. 비밀번호 영문 + 숫자 조합 및 8자리 이상 검사
     const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
     if (!passwordRegex.test(password)) {
-      alert("비밀번호는 영문과 숫자를 조합하여 8자리 이상 입력해주세요.");
+      alert("비밀번호는 영문과 숫자를 조합하여 8자리 이상 입력해주세요. 🔒");
       return false;
     }
 
-    // 3. 비밀번호 일치 확인 검사
     if (password !== passwordConfirm) {
-      alert("비밀번호가 일치하지 않습니다.");
+      alert("비밀번호가 일치하지 않습니다. 👥");
       return false;
     }
 
     return true;
   };
 
-  // 🚀 [POST] 장고 백엔드 회원가입 API 연동 쉘
   const signupMutation = useMutation({
     mutationFn: async () => {
       const response = await client.post("/v1/users/signup/", {
@@ -49,10 +45,10 @@ export default function SignUpScreen() {
     },
     onSuccess: (data) => {
       alert(data.message || "회원가입이 정상적으로 완료되었습니다. 🤗");
-      // 가입 성공 직후 로그인방으로 점프 이동!
       router.replace("/login");
     },
     onError: (error: any) => {
+      console.error("❌ 백엔드 통신 에러 발생 로그:", error);
       const serverError = error.response?.data;
       let errorMessage = "서버와 통신 중 오류가 발생했습니다.";
 
@@ -73,31 +69,29 @@ export default function SignUpScreen() {
     },
   });
 
-  const handleSignUp = (e: React.FormEvent) => {
-    e.preventDefault(); // 웹 브라우저 새로고침 디폴트 액션 차단 가드
+  // 🎯 [이름 검증 완료] 클릭 시 무조건 이 안으로 도달하게 만듭니다.
+  const handleButtonClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+
     if (validateForm()) {
       signupMutation.mutate();
     }
   };
 
   return (
-    // 🌍 중앙 밸런스를 보증하는 백그라운드 쉘
-    <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4 antialiased selection:bg-emerald-100">
-      {/* 🥑 회원가입 박스 프레임 */}
-      <div className="w-full max-w-md bg-white border border-gray-100 rounded-[32px] p-8 md:p-10 shadow-xl shadow-gray-200/40 animate-fadeIn">
-        {/* 상단 웰컴 문구 라인 */}
+    <div className="min-h-screen bg-[#030712] flex items-center justify-center p-4 antialiased">
+      <div className="w-full max-w-lg bg-white border border-gray-100 rounded-[32px] p-8 md:p-10 shadow-md">
         <div className="mb-8 text-left">
           <h1 className="text-3xl font-black text-gray-900 tracking-tight flex items-center gap-2">
             반가워요! 🥑
           </h1>
-          <p className="text-sm font-semibold text-gray-400 mt-2">
-            ZelonMeal에 가입하고 건강한 식사를 만들어가세요.
+          <p className="text-sm font-semibold text-gray-400 my-2">
+            ZelonMeal과 함께 건강한 식단을 만들어가세요.
           </p>
         </div>
 
-        {/* 웹 표준 인풋 폼 벨트 */}
-        <form onSubmit={handleSignUp} className="space-y-4">
-          {/* 이메일 인풋 웰 */}
+        {/* 🧼 onSubmit 제거: 엔터키나 폼 전송 오작동을 완전히 세척한 순수 레이아웃 div로 강제 하향 조정 */}
+        <div className="space-y-4">
           <div className="relative">
             <input
               type="email"
@@ -105,12 +99,11 @@ export default function SignUpScreen() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="이메일 주소"
-              className="w-full bg-gray-50 text-sm font-medium pl-11 pr-4 py-3.5 rounded-xl border border-gray-200/80 focus:outline-none focus:border-emerald-400 focus:bg-white transition-all text-gray-800 placeholder:text-gray-400"
+              className="w-full bg-gray-50 text-sm font-medium pl-11 pr-4 py-3.5 rounded-xl border border-gray-200/80 focus:outline-none focus:border-emerald-400 focus:bg-white text-gray-800"
             />
             <Mail size={16} className="absolute left-4 top-4.5 text-gray-400" />
           </div>
 
-          {/* 비밀번호 인풋 웰 */}
           <div className="relative">
             <input
               type="password"
@@ -118,12 +111,11 @@ export default function SignUpScreen() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="비밀번호 (영문/숫자 조합 8자 이상)"
-              className="w-full bg-gray-50 text-sm font-medium pl-11 pr-4 py-3.5 rounded-xl border border-gray-200/80 focus:outline-none focus:border-emerald-400 focus:bg-white transition-all text-gray-800 placeholder:text-gray-400"
+              className="w-full bg-gray-50 text-sm font-medium pl-11 pr-4 py-3.5 rounded-xl border border-gray-200/80 focus:outline-none focus:border-emerald-400 focus:bg-white text-gray-800"
             />
             <Lock size={16} className="absolute left-4 top-4.5 text-gray-400" />
           </div>
 
-          {/* 비밀번호 확인 재입력 웰 */}
           <div className="relative">
             <input
               type="password"
@@ -131,7 +123,7 @@ export default function SignUpScreen() {
               value={passwordConfirm}
               onChange={(e) => setPasswordConfirm(e.target.value)}
               placeholder="비밀번호 확인"
-              className="w-full bg-gray-50 text-sm font-medium pl-11 pr-4 py-3.5 rounded-xl border border-gray-200/80 focus:outline-none focus:border-emerald-400 focus:bg-white transition-all text-gray-800 placeholder:text-gray-400"
+              className="w-full bg-gray-50 text-sm font-medium pl-11 pr-4 py-3.5 rounded-xl border border-gray-200/80 focus:outline-none focus:border-emerald-400 focus:bg-white text-gray-800"
             />
             <CheckCircle2
               size={16}
@@ -139,13 +131,14 @@ export default function SignUpScreen() {
             />
           </div>
 
-          {/* 🚀 전송 액션 코어 버튼 (비활성화 스키마 매립) */}
+          {/* 🚀 onClick 핸들러 명확하게 바인딩 완비 */}
           <button
-            type="submit"
+            type="button"
+            onClick={handleButtonClick}
             disabled={signupMutation.isPending}
             className={`w-full h-13 mt-4 flex items-center justify-center gap-2 rounded-xl text-sm font-black text-white transition-all shadow-md active:scale-[0.99] ${
               signupMutation.isPending
-                ? "bg-emerald-300 shadow-none cursor-wait"
+                ? "bg-emerald-300 cursor-wait"
                 : "bg-emerald-400 hover:bg-emerald-500 shadow-emerald-400/20"
             }`}
           >
@@ -153,21 +146,18 @@ export default function SignUpScreen() {
               <RefreshCw size={16} className="animate-spin" />
             ) : (
               <>
-                <span> 시작하기</span>
+                <span>시작하기</span>
                 <ArrowRight size={14} strokeWidth={2.5} />
               </>
             )}
           </button>
-        </form>
+        </div>
 
-        {/* 📭 하단 백로그인 가이드 인터렉션 */}
-        <div className="mt-8 pt-6 border-t border-gray-100 flex items-center justify-center gap-2 text-xs font-semibold text-gray-400">
+        <div className="mt-8 pt-6 border-t border-gray-100 flex items-center justify-center gap-2 text-[13px] font-semibold text-gray-400">
           <span>이미 계정이 있으신가요?</span>
           <Link
-            href="/login" // (auth) 라우트 그룹 덕에 그냥 /login으로 깔끔하게 매핑
-            className={`text-emerald-500 font-bold hover:text-emerald-600 transition-all ${
-              signupMutation.isPending ? "pointer-events-none opacity-50" : ""
-            }`}
+            href="/login"
+            className="text-emerald-500 font-bold hover:text-emerald-600"
           >
             로그인
           </Link>

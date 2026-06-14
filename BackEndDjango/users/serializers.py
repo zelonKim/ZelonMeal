@@ -43,11 +43,11 @@ class SignUpSerializer(serializers.ModelSerializer):
         validators=[
             UniqueValidator(
                 queryset=User.objects.all(),
-                message="이미 가입한 이메일입니다.",  # 👈 중복 시 뱉을 한글 문구
+                message="이미 가입한 이메일입니다.", 
             )
         ],
         error_messages={
-            "invalid": "올바른 이메일 형식이 아닙니다."  # 👈 형식 오류 시 뱉을 한글 문구
+            "invalid": "올바른 이메일 형식이 아닙니다." 
         },
     )
     password = serializers.CharField(write_only=True)
@@ -78,8 +78,8 @@ class SignUpSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         """안전하게 유저 객체 생성"""
         email = validated_data["email"]
-        password = validated_data["password"]
         username = email.split("@")[0]
+        password = validated_data["password"]
 
         user = User.objects.create_user(
             email=email, username=username, password=password
