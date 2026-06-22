@@ -13,7 +13,8 @@ app = FastAPI(title="ZelonMeal AI 서버")
 
 origins = [
     "http://localhost:3000",
-    "https://zelonmeal.vercel.app",  # 👈  Next.js 배포 주소가 나오면 여기에 추가!
+    "https://zelon-meal.vercel.app",  # 👈  Next.js 배포 주소가 나오면 여기에 추가!
+    "https://zelonmeal-production.up.railway.app"
 ]
 
 app.add_middleware(
