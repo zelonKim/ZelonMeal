@@ -1,6 +1,6 @@
-from fastapi import FastAPI
 from scalar_fastapi import get_scalar_api_reference
 from fastapi import FastAPI, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
 import os
 from openai import OpenAI
 from schemas import AIRecommendResponse, DjangoPayload
@@ -10,6 +10,19 @@ from schemas import AnalyzeMenuPayload, NutritionResponse, AIReRecommendPayload
 load_dotenv()
 
 app = FastAPI(title="ZelonMeal AI 서버")
+
+origins = [
+    "http://localhost:3000",
+    "https://zelonmeal.vercel.app",  # 👈  Next.js 배포 주소가 나오면 여기에 추가!
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,  # 특정 도메인만 허용 (전체 허용 시 ["*"])
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/")
