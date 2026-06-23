@@ -55,11 +55,10 @@ export default function MyPageScreen() {
     gender: "M",
     current_weight: "",
     goal_weight: "",
-    purpose: "LOSS",
+    purpose: "HEALTH",
     meal_style: "MIXED",
-    disease: "",
-    allergies: "",
-    created_at: "",
+    disease: "없음",
+    allergies: "없음",
   });
 
   // ------------------------------------------
@@ -86,11 +85,10 @@ export default function MyPageScreen() {
         gender: data.gender || "M",
         current_weight: String(data.current_weight || ""),
         goal_weight: String(data.goal_weight || ""),
-        purpose: data.purpose || "LOSS",
+        purpose: data.purpose || "HEALTH",
         meal_style: data.meal_style || "MIXED",
-        disease: data.disease || "",
-        allergies: data.allergies || "",
-        created_at: data.created_at || "",
+        disease: data.disease || "없음",
+        allergies: data.allergies || "없음",
       });
     }
   }, [data]);
@@ -263,7 +261,7 @@ export default function MyPageScreen() {
         <View style={styles.card}>
           {item === 0 && (
             <View style={styles.cardInner}>
-              <Text style={styles.cardTitle}>📊 기본 신체 스펙</Text>
+              <Text style={styles.cardTitle}>📊 기본 신체 정보</Text>
               <View style={styles.cardContentGap}>
                 <View style={styles.row}>
                   <View style={styles.inputWrapper}>
@@ -434,6 +432,11 @@ export default function MyPageScreen() {
     <View style={styles.mainContainer}>
       {/* 🚀 전용 민트 배너 내부 우측 상단에 정교하게 배치된 프리미엄 디데이 뱃지 레이아웃 */}
       <View style={styles.profileHeader}>
+        <View style={styles.badgeAbsolutePosition}>
+          <Text style={styles.badgeTextLayout}>
+            {getMealDayCount(userInfo.created_at)}
+          </Text>
+        </View>
         <View style={styles.profileInfoLeft}>
           {/* 아바타 영역 (텍스트 공백 싹 제거하여 크래시 완전 방멸) */}
           <TouchableOpacity
@@ -463,11 +466,6 @@ export default function MyPageScreen() {
             </View>
           </Pressable>
           {/* 🎯 [신규 이식] 프로필 헤더 카드 우측 상단에 절묘하게 흐르는 스페셜 그린 뱃지 */}
-          <View style={styles.badgeAbsolutePosition}>
-            <Text style={styles.badgeTextLayout}>
-              {getMealDayCount(userInfo.created_at)}
-            </Text>
-          </View>
         </View>
       </View>
 
@@ -601,7 +599,7 @@ export default function MyPageScreen() {
           ) : (
             <>
               <Save size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
-              <Text style={styles.saveButtonText}>변경하기</Text>
+              <Text style={styles.saveButtonText}>저장하기</Text>
             </>
           )}
         </TouchableOpacity>
@@ -640,10 +638,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     width: CARD_WIDTH,
-    marginTop: 20,
+    marginTop: 10,
     marginBottom: 69,
     paddingHorizontal: 20,
-    paddingVertical: 18,
+    paddingTop: 30,
+    paddingBottom: 24,
     backgroundColor: "#E6F4EE",
     borderRadius: 24,
     shadowColor: "#10B981",
@@ -656,6 +655,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
+    marginTop: 10,
   },
   avatarBorderRing: {
     width: 58,
@@ -697,7 +697,7 @@ const styles = StyleSheet.create({
   infoRowUnder: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 5,
+    marginTop: 3,
   },
   subText: {
     fontSize: 13,
@@ -708,11 +708,11 @@ const styles = StyleSheet.create({
   // 🌟 [신규 스타일] 프로필 배너 우측 상단에 딱 붙을 럭셔리 네이티브 뱃지 좌표계
   badgeAbsolutePosition: {
     position: "absolute",
-    top: -2,
-    right: -2,
+    top: 10,
+    right: 10,
     backgroundColor: "#4FA082", // 활력 가득한 비비드 그린 솔리드 매칭
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 3,
     borderRadius: 10,
     shadowColor: "#10B981",
     shadowOffset: { width: 0, height: 3 },
@@ -721,8 +721,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   badgeTextLayout: {
-    fontSize: 11,
-    fontWeight: "900", // 숫자가 직관적으로 튀어나오도록 최고 볼드 적용
+    fontSize: 10.5,
+    fontWeight: "800", // 숫자가 직관적으로 튀어나오도록 최고 볼드 적용
     color: "#FFFFFF", // 흰색 폰트로 가독성 백퍼센트 확보
   },
 

@@ -99,8 +99,10 @@ export default function SignUp() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.headerArea}>
-        <Text style={styles.title}>반가워요! 🥑</Text>
-        <Text style={styles.subtitle}>ZelonMeal의 멤버가 되어보세요.</Text>
+        <Text style={styles.title}>식사하셨나요? 📋</Text>
+        <Text style={styles.subtitle}>
+          AI로부터 건강한 식단을 추천받아보세요!
+        </Text>
       </View>
 
       <View style={styles.inputForm}>
@@ -169,10 +171,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F9FAFB",
     paddingHorizontal: 24,
-    justifyContent: "space-between",
+    justifyContent: "center",
   },
   headerArea: {
-    marginTop: 60,
+    marginTop: 100,
   },
   title: {
     fontSize: 28,
@@ -187,8 +189,8 @@ const styles = StyleSheet.create({
   inputForm: {
     width: "100%",
     gap: 12,
-    marginVertical: 40,
-    paddingBottom: 200,
+    marginVertical: 55,
+    paddingBottom: 150,
   },
   input: {
     backgroundColor: "#FFFFFF",
@@ -222,7 +224,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     gap: 8,
-    marginBottom: 30,
+    marginBottom: 90,
   },
   footerText: {
     fontSize: 14,

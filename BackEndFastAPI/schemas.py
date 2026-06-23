@@ -9,10 +9,10 @@ class DjangoPayload(BaseModel):
     current_weight: float
     goal_weight: float
     purpose: str
-    meal_style: str
+    meal_style: str 
     disease: str | None = "없음"
     allergies: str | None = "없음"
-    yesterday_meals: List[str]
+    yesterday_meals: List[str] | None
 
 
 class MealItemResponse(BaseModel):

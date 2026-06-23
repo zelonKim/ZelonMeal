@@ -92,14 +92,14 @@ export default function Login() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.headerArea}>
-        <Text style={styles.brandSubtitle}>오늘의 건강한 식단</Text>
-        <Text style={styles.brandTitle}>ZelonMeal</Text>
+        <Text style={styles.brandSubtitle}>오늘의 건강한 한끼 식단</Text>
+        <Text style={styles.brandTitle}>ZelonMeal 🥑</Text>
       </View>
 
       <View style={styles.inputForm}>
         <TextInput
           style={styles.input}
-          placeholder="이메일"
+          placeholder="이메일을 입력해주세요"
           placeholderTextColor="#9CA3AF"
           keyboardType="email-address"
           autoCapitalize="none"
@@ -109,7 +109,7 @@ export default function Login() {
         />
         <TextInput
           style={styles.input}
-          placeholder="비밀번호"
+          placeholder="비밀번호를 입력해주세요"
           placeholderTextColor="#9CA3AF"
           secureTextEntry
           autoCapitalize="none"
@@ -152,28 +152,28 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F9FAFB",
     paddingHorizontal: 24,
-    justifyContent: "space-between",
+    justifyContent: "center",
   },
   headerArea: {
-    marginTop: 80,
+    marginBottom: 80,
     alignItems: "center",
   },
   brandTitle: {
-    fontSize: 36,
+    fontSize: 31,
     fontWeight: "bold",
     color: "#10B981",
     letterSpacing: -0.5,
   },
   brandSubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#4B5563",
-    marginTop: 8,
+    marginTop: 48,
     fontWeight: "500",
   },
   inputForm: {
     width: "100%",
     gap: 12,
-    marginBottom: 150,
+    marginBottom: 200,
   },
   input: {
     backgroundColor: "#FFFFFF",
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     gap: 8,
-    marginBottom: 30,
+    marginTop: 10,
   },
   footerText: {
     fontSize: 14,

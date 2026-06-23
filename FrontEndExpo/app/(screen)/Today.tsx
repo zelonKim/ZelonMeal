@@ -26,6 +26,15 @@ import {
   View,
 } from "react-native";
 
+const REQUIRED_PROFILE_FIELDS: Record<string, string> = {
+  age: "나이",
+  current_weight: "현재 체중",
+  goal_weight: "목표 체중",
+  gender: "성별",
+  purpose: "식단 관리 목적",
+  meal_style: "선호 식단 스타일",
+};
+
 const { width, height } = Dimensions.get("window");
 const CARD_WIDTH = width * 0.88;
 
@@ -54,6 +63,18 @@ export default function TodayScreen() {
 
   const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
   const [userFeedback, setUserFeedback] = useState("");
+
+  const { data: userProfile } = useQuery({
+    queryKey: ["userProfileData"],
+    queryFn: async () => {
+      const token = await SecureStore.getItemAsync("userToken");
+      const response = await client.get("/v1/users/profile/", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return response.data;
+    },
+    retry: false,
+  });
 
   // 1️⃣ [GET] 오늘의 식단 플랜 실시간 조회
   const { data: todayPlan, isLoading: isTodayLoading } = useQuery({
@@ -150,6 +171,47 @@ export default function TodayScreen() {
   };
 
   const handleMealRecommend = () => {
+    // 1. 프로필 데이터를 조회하지 못했거나 통신 전일 때의 방어 가드
+    if (!userProfile) {
+      Alert.alert(
+        "알림",
+        "유저 프로필 정보를 불러오는 중입니다. 잠시 후 다시 시도해 주세요.",
+      );
+      return;
+    }
+
+    const missingFields: string[] = [];
+
+    // 2. DjangoPayload의 필수 필드들을 돌면서 데이터가 비어있는지 체크
+    Object.keys(REQUIRED_PROFILE_FIELDS).forEach((field) => {
+      const value = userProfile[field];
+
+      // 어제 먹은 식단 리스트(List[str])인 경우 배열이 비었거나 null인지 검사
+      if (field === "yesterday_meals") {
+        if (!value || !Array.isArray(value) || value.length === 0) {
+          missingFields.push(REQUIRED_PROFILE_FIELDS[field]);
+        }
+      }
+      // 그 외 일반 필드들의 null, undefined, 빈 문자열 유무 정밀 검사
+      else {
+        if (
+          value === null ||
+          value === undefined ||
+          String(value).trim() === ""
+        ) {
+          missingFields.push(REQUIRED_PROFILE_FIELDS[field]);
+        }
+      }
+    });
+
+    if (missingFields.length > 0) {
+      Alert.alert(
+        "프로필 미입력",
+        `AI가 맞춤 식단을 설계할 수 있도록 다음 항목을 입력해주세요!\n\n ⚠️ 필수 항목:\n- ${missingFields.join("\n- ")}\n\n`,
+      );
+      return;
+    }
+
     recommendMutation.mutate();
   };
 
@@ -336,7 +398,8 @@ export default function TodayScreen() {
           </View>
           <Text style={styles.emptyTitle}>오늘의 추천 식단이 아직 없어요</Text>
           <Text style={styles.emptySubtitle}>
-            AI에게 오늘의 추천 식단을 요청해 보세요!
+            왼쪽 탭에서 나의 프로필을 저장하고, {"\n"} 정확한 식단을
+            추천받아보세요.
           </Text>
 
           <TouchableOpacity
@@ -551,9 +614,9 @@ const styles = StyleSheet.create({
   nutriValue_P: { fontSize: 14, fontWeight: "bold", color: "#10B981" },
   emptyContainer: {
     flex: 1,
-    justifyContent: "center",
+    marginTop: 200,
     alignItems: "center",
-    paddingHorizontal: 40,
+    paddingHorizontal: 30,
   },
   iconCircle: {
     width: 70,
