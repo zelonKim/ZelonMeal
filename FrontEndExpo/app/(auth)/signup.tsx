@@ -1,18 +1,22 @@
+import { client } from "@/api/client";
+import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-// 🚀 백엔드 전송을 위한 Mutation 훅 임포트
-import { client } from "@/api/client";
-import { useMutation } from "@tanstack/react-query";
 
 export default function SignUp() {
   const router = useRouter();
@@ -22,14 +26,12 @@ export default function SignUp() {
   const [passwordConfirm, setPasswordConfirm] = useState("");
 
   const validateForm = () => {
-    // 1. 이메일 형식 정규식 검사
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       Alert.alert("입력 오류", "올바른 이메일 형식이 아닙니다.");
       return false;
     }
 
-    // 2. 비밀번호 영문 + 숫자 조합 및 8자리 이상 검사
     const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
     if (!passwordRegex.test(password)) {
       Alert.alert(
@@ -39,7 +41,6 @@ export default function SignUp() {
       return false;
     }
 
-    // 3. 비밀번호 일치 확인 검사
     if (password !== passwordConfirm) {
       Alert.alert("입력 오류", "비밀번호가 일치하지 않습니다.");
       return false;
@@ -98,70 +99,103 @@ export default function SignUp() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.headerArea}>
-        <Text style={styles.title}>식사하셨나요? 📋</Text>
-        <Text style={styles.subtitle}>
-          AI로부터 건강한 식단을 추천받아보세요!
-        </Text>
-      </View>
-
-      <View style={styles.inputForm}>
-        <TextInput
-          style={styles.input}
-          placeholder="이메일"
-          placeholderTextColor="#9CA3AF"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          value={email}
-          onChangeText={setEmail}
-          editable={!signupMutation.isPending}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="비밀번호 (영문/숫자 조합 8자 이상)"
-          placeholderTextColor="#9CA3AF"
-          secureTextEntry
-          autoCapitalize="none"
-          value={password}
-          onChangeText={setPassword}
-          editable={!signupMutation.isPending}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="비밀번호 확인"
-          placeholderTextColor="#9CA3AF"
-          secureTextEntry
-          autoCapitalize="none"
-          value={passwordConfirm}
-          onChangeText={setPasswordConfirm}
-          editable={!signupMutation.isPending}
-        />
-
-        <TouchableOpacity
-          style={[
-            styles.signupButton,
-            signupMutation.isPending && styles.disabledButton,
-          ]}
-          onPress={handleSignUp}
-          disabled={signupMutation.isPending}
+      {/* 1. 화면 전체를 감싸는 키보드 회피 뷰 */}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.select({ ios: 0, android: 0 })}
+      >
+        {/* 2. 유연한 스크롤을 위한 스크롤 뷰 */}
+        <ScrollView
+          contentContainerStyle={styles.scrollContainer}
+          bounces={false}
+          showsVerticalScrollIndicator={false}
         >
-          {signupMutation.isPending ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.signupButtonText}>시작하기</Text>
-          )}
-        </TouchableOpacity>
-      </View>
+          {/* 3. 빈 화면 터치 시 키보드 닫기 래퍼 */}
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={{ flex: 1, width: "100%" }}>
+              {/* 좌측 상단 뒤로가기 바 */}
+              {/* <View style={styles.topNavigation}>
+                <TouchableOpacity
+                  style={styles.backButton}
+                  onPress={() => router.back()}
+                  disabled={signupMutation.isPending}
+                >
+                  <Ionicons name="arrow-back" size={24} color="#111827" />
+                </TouchableOpacity>
+              </View> */}
 
-      <View style={styles.footerArea}>
-        <Text style={styles.footerText}>이미 계정이 있으신가요?</Text>
-        <TouchableOpacity
-          onPress={() => router.push("/(auth)/login")}
-          disabled={signupMutation.isPending}
-        >
-          <Text style={styles.backLinkText}>로그인</Text>
-        </TouchableOpacity>
-      </View>
+              {/* 헤더 타이틀 영역 */}
+              <View style={styles.headerArea}>
+                <Text style={styles.title}>식사하셨나요? 📋</Text>
+                <Text style={styles.subtitle}>
+                  AI로부터 건강한 식단을 추천받아보세요!
+                </Text>
+              </View>
+
+              {/* 입력 폼 영역 */}
+              <View style={styles.inputForm}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="이메일"
+                  placeholderTextColor="#9CA3AF"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  value={email}
+                  onChangeText={setEmail}
+                  editable={!signupMutation.isPending}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="비밀번호 (영문/숫자 조합 8자 이상)"
+                  placeholderTextColor="#9CA3AF"
+                  secureTextEntry
+                  autoCapitalize="none"
+                  value={password}
+                  onChangeText={setPassword}
+                  editable={!signupMutation.isPending}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="비밀번호 확인"
+                  placeholderTextColor="#9CA3AF"
+                  secureTextEntry
+                  autoCapitalize="none"
+                  value={passwordConfirm}
+                  onChangeText={setPasswordConfirm}
+                  editable={!signupMutation.isPending}
+                />
+
+                <TouchableOpacity
+                  style={[
+                    styles.signupButton,
+                    signupMutation.isPending && styles.disabledButton,
+                  ]}
+                  onPress={handleSignUp}
+                  disabled={signupMutation.isPending}
+                >
+                  {signupMutation.isPending ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.signupButtonText}>시작하기</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              {/* 하단 푸터 영역 */}
+              <View style={styles.footerArea}>
+                <Text style={styles.footerText}>이미 계정이 있으신가요?</Text>
+                <TouchableOpacity
+                  onPress={() => router.push("/(auth)/login")}
+                  disabled={signupMutation.isPending}
+                >
+                  <Text style={styles.backLinkText}>로그인</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </TouchableWithoutFeedback>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -170,8 +204,21 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F9FAFB",
+  },
+  // 🍏 새로 추가된 스크롤 컨테이너 (기존 container 스타일 이식)
+  scrollContainer: {
+    flexGrow: 1,
     paddingHorizontal: 24,
+  },
+  topNavigation: {
+    height: 48,
     justifyContent: "center",
+    alignItems: "flex-start",
+    marginTop: 12,
+  },
+  backButton: {
+    paddingVertical: 8,
+    paddingRight: 16,
   },
   headerArea: {
     marginTop: 100,
@@ -189,8 +236,7 @@ const styles = StyleSheet.create({
   inputForm: {
     width: "100%",
     gap: 12,
-    marginVertical: 55,
-    paddingBottom: 150,
+    marginVertical: 40,
   },
   input: {
     backgroundColor: "#FFFFFF",
@@ -198,7 +244,7 @@ const styles = StyleSheet.create({
     borderColor: "#E5E7EB",
     borderRadius: 14,
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 15,
     fontSize: 15,
     color: "#111827",
   },
@@ -209,10 +255,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginTop: 10,
-    height: 56, // 인디케이터 회전 시 레이아웃 무너짐 방지용 고정 높이
+    height: 56,
   },
   disabledButton: {
-    backgroundColor: "#A7F3D0", // 로딩 중일 때 연한 초록색으로 비활성화 표시
+    backgroundColor: "#A7F3D0",
   },
   signupButtonText: {
     color: "#FFFFFF",
@@ -224,7 +270,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     gap: 8,
-    marginBottom: 90,
+    marginTop: Platform.OS === "ios" ? 190 : 150,
+    marginBottom: 60,
   },
   footerText: {
     fontSize: 14,
@@ -234,10 +281,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#10B981",
     fontWeight: "800",
-  },
-  keyboardAvoidingWrapper: {
-    width: "100%",
-    alignItems: "center",
-    justifyContent: "center",
   },
 });

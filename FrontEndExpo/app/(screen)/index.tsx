@@ -104,10 +104,10 @@ const styles = StyleSheet.create({
     pointerEvents: "box-none", // 버튼 영역 외 터치가 씹히는 RN 버그 방지 가드
     ...Platform.select({
       ios: {
-        bottom: 50,
+        bottom: 38,
       },
       android: {
-        bottom: 60,
+        bottom: 75,
       },
     }),
   },
@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
   activeButton: {
     backgroundColor: "#34D399",
     shadowColor: "#34D399", // 그림자도 민트빛 후광으로 번지게 연출
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.2,
     shadowRadius: 10,
   },
 });

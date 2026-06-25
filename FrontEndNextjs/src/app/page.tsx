@@ -13,6 +13,7 @@ import {
   MessageSquare,
   LayoutDashboard,
   Check,
+  ShoppingCartIcon,
 } from "lucide-react";
 
 // 📝 식사 시간 매핑 이모지 딕셔너리
@@ -139,8 +140,8 @@ export default function TodayMealDashboard() {
         <div className="flex items-center gap-2 text-sm font-bold text-gray-400">
           <LayoutDashboard size={16} />
 
-          <span className="text-gray-300">/</span>
-          <span className="text-gray-800 font-extrabold">
+          {/* <span className="text-gray-300 text-lg">🥑</span> */}
+          <span className="text-gray-800 text-base font-extrabold">
             오늘의 AI 추천 식단
           </span>
         </div>
@@ -148,7 +149,7 @@ export default function TodayMealDashboard() {
         {menuList.length > 0 && (
           <button
             onClick={() => setFeedbackModalVisible(true)}
-            className="flex items-center gap-2 text-[13px] font-bold bg-emerald-50 text-[#030712] border border-emerald-300 px-4 py-2 rounded-xl hover:bg-emerald-100  transition-all shadow-sm"
+            className="flex items-center gap-2 text-[13px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 px-4 py-2 rounded-xl hover:bg-emerald-100  transition-all shadow-sm"
           >
             <RefreshCw size={14} />
             <span>식단 다시 추천받기</span>
@@ -170,10 +171,10 @@ export default function TodayMealDashboard() {
                   <div>
                     {/* 상단 태그 쉴드 라인 */}
                     <div className="flex justify-between items-center mb-2">
-                      <span className="text-xs font-black text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg">
+                      <span className="text-[12.5px] font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg">
                         {mealTimeMap[item.meal_time] || item.meal_time_display}
                       </span>
-                      <div className="flex items-center gap-1 text-red-500 font-black text-lg">
+                      <div className="flex items-center gap-1 text-red-500 font-black text-[19px]">
                         <Flame size={14} className="fill-red-500" />
                         <span>
                           {item.calories}
@@ -184,33 +185,33 @@ export default function TodayMealDashboard() {
                     </div>
 
                     {/* 음식 메뉴 이름 타이포그래피 */}
-                    <h3 className="text-xl font-black text-gray-800 tracking-tight leading-snug min-h-[56px] flex items-center">
+                    <h3 className="text-[22px] font-bold text-gray-800 tracking-tight leading-snug min-h-[56px] flex items-center">
                       {item.menu_name}
                     </h3>
 
                     {/* 3대 영양소 위젯 스펙 스플릿 */}
                     <div className="grid grid-cols-3 gap-2 bg-gray-50 p-3 rounded-xl mb-8 text-center">
                       <div>
-                        <div className="text-[12px] font-bold text-gray-400">
+                        <div className="text-[13px] font-bold text-gray-400">
                           탄수화물
                         </div>
-                        <div className="text-md font-black text-amber-500 mt-0.5">
+                        <div className="text-lg font-black text-amber-500 mt-0.5">
                           {item.carbohydrates}g
                         </div>
                       </div>
                       <div>
-                        <div className="text-[12px] font-bold text-gray-400">
+                        <div className="text-[13px] font-bold text-gray-400">
                           단백질
                         </div>
-                        <div className="text-md font-black text-emerald-500 mt-0.5">
+                        <div className="text-lg font-black text-emerald-500 mt-0.5">
                           {item.protein}g
                         </div>
                       </div>
                       <div>
-                        <div className="text-[12px] font-bold text-gray-400">
+                        <div className="text-[13px] font-bold text-gray-400">
                           지방
                         </div>
-                        <div className="text-md font-black text-blue-500 mt-0.5">
+                        <div className="text-lg font-black text-blue-500 mt-0.5">
                           {item.fat}g
                         </div>
                       </div>
@@ -218,11 +219,11 @@ export default function TodayMealDashboard() {
 
                     {/* 레시피 인공지능 요약 보드 */}
                     <div className="mt-4 space-y-2">
-                      <div className="flex items-center gap-1.5 text-[13px] font-bold text-gray-600/90">
+                      <div className="flex items-center gap-1.5 text-sm font-bold text-gray-600/90">
                         <BookOpen size={14} />
                         <span>조리법 가이드</span>
                       </div>
-                      <div className="text-[13px] text-gray-600/95 leading-relaxed bg-gray-50/50 p-3 rounded-xl border border-gray-100/50 max-h-[140px] overflow-y-auto whitespace-pre-line">
+                      <div className="text-sm text-gray-600/95 leading-relaxed bg-gray-50/50 p-3 rounded-xl border border-gray-100/50 max-h-[140px] overflow-y-auto whitespace-pre-line">
                         {item.recipe
                           ? item.recipe.trim()
                           : "레시피 정보 준비 중"}
@@ -233,10 +234,10 @@ export default function TodayMealDashboard() {
                   {/* 🛒 웹 전용 하이라이트 익스프레스 버튼 (마켓 매칭) */}
                   <button
                     onClick={() => handleZMartLink(item.menu_name)}
-                    className="w-full mt-6 flex items-center justify-center gap-2 bg-emerald-500 text-white hover:bg-emerald-400 text-[13px] font-bold py-2.5 rounded-xl transition-all shadow-sm"
+                    className="w-full mt-6 flex items-center justify-center gap-2 bg-emerald-500 text-white hover:bg-emerald-400 text-sm font-bold py-2.5 rounded-xl transition-all shadow-sm"
                   >
-                    <ShoppingCart size={13} />
-                    <span>Z마트 재료 담기</span>
+                    <span>Z마트 식자재 담기</span>{" "}
+                    <ShoppingCartIcon size={14} />
                   </button>
                 </div>
               ))}
@@ -275,9 +276,9 @@ export default function TodayMealDashboard() {
               <MessageSquare size={20} className="text-emerald-500" />
               <h3>식단 보완 요청</h3>
             </div>
-            <p className="text-xs font-medium text-gray-400 leading-normal mb-5">
-              현재 구성된 식단에서 수정하고 싶은 내용을 입력하면 AI가 다시
-              식단을 설계해줘요!
+            <p className="text-sm font-medium text-gray-500 leading-normal mb-5">
+              현재 식단에서 보완하고 싶은 내용을 입력하면 AI가 다시 식단을
+              추천해줘요!
             </p>
 
             <form onSubmit={handleConfirmReRecommend} className="space-y-5">
@@ -287,20 +288,20 @@ export default function TodayMealDashboard() {
                 placeholder="예: 오늘 저녁은 동물성 단백질이 아닌, 식물성 단백질 요리로 대체해줘!"
                 maxLength={120}
                 autoFocus
-                className="w-full h-24 bg-gray-50 border border-gray-200 focus:border-emerald-300 focus:outline-none p-4 rounded-xl text-sm font-medium resize-none transition-all placeholder:text-gray-400/80 text-gray-900"
+                className="w-full h-24 bg-gray-50 border border-gray-200 focus:border-emerald-300 focus:outline-none p-4 rounded-xl text-[15px] font-medium resize-none transition-all placeholder:text-gray-400/80 text-gray-900"
               />
 
               <div className="flex gap-3">
                 <button
                   type="button"
                   onClick={() => setFeedbackModalVisible(false)}
-                  className="flex-1 bg-gray-50 border border-gray-200 text-gray-500 text-sm font-bold py-3 rounded-xl hover:bg-gray-200 transition-all"
+                  className="flex-1 bg-gray-50 border border-gray-200 text-gray-500 text-[15px] font-bold py-3 rounded-xl hover:bg-gray-200 transition-all"
                 >
                   취소
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-gray-950 text-white text-sm font-bold py-3 rounded-xl hover:bg-emerald-500 transition-all flex items-center justify-center gap-1.5"
+                  className="flex-1 bg-gray-950 text-white text-[15px] font-bold py-3 rounded-xl hover:bg-emerald-500 transition-all flex items-center justify-center gap-1.5"
                 >
                   <Check size={14} />
                   <span>입력 완료</span>

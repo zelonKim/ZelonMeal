@@ -82,11 +82,11 @@ export default function SignUpScreen() {
     <div className="min-h-screen bg-[#030712] flex items-center justify-center p-4 antialiased">
       <div className="w-full max-w-lg bg-white border border-gray-100 rounded-[32px] p-8 md:p-10 shadow-md">
         <div className="mb-9 text-left">
-          <h1 className="text-3xl font-black text-gray-900 tracking-tight flex items-center gap-2">
-            반가워요! 👋
+          <h1 className="text-3xl font-bold text-gray-800 tracking-tight flex items-center gap-2">
+            식사하셨나요? 📋
           </h1>
           <p className="text-sm font-semibold text-gray-500 my-2">
-            ZelonMeal에 가입하고 건강한 식단을 만들어가세요.
+            AI로부터 건강한 식단을 추천받아보세요!
           </p>
         </div>
 
@@ -153,7 +153,7 @@ export default function SignUpScreen() {
           </button>
         </div>
 
-        <div className="mt-8 pt-6 border-t border-gray-100 flex items-center justify-center gap-2 text-[13px] font-semibold text-gray-400">
+        <div className="mt-8 pt-6 border-t border-gray-100 flex items-center justify-center gap-2 text-sm font-semibold text-gray-400">
           <span>이미 계정이 있으신가요?</span>
           <Link
             href="/login"

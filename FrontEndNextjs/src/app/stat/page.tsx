@@ -12,6 +12,7 @@ import {
   TrendingUp,
   Activity,
   RotateCw,
+  ArchiveX,
 } from "lucide-react";
 
 const mealEmojiMap: Record<string, string> = {
@@ -139,7 +140,7 @@ export default function StatScreen() {
               max={getFormattedYYYYMMDD(new Date())}
               value={currentFormattedDate}
               onChange={handleDropdownDateChange}
-              className="w-full bg-gray-50 border border-gray-200 hover:bg-gray-100  focus:border-emerald-400 focus:bg-white focus:outline-none py-2 px-6 rounded-xl text-sm font-black text-gray-800 cursor-pointer text-center"
+              className="w-full bg-gray-50 border border-gray-200 hover:bg-gray-100  focus:border-emerald-400 focus:bg-white focus:outline-none py-2 px-6 rounded-xl text-[14.5px] font-black text-gray-800 cursor-pointer text-center"
             />
           </div>
           <button
@@ -157,7 +158,7 @@ export default function StatScreen() {
         <div className="w-24 flex justify-start ms-2">
           <button
             onClick={handleGoToToday}
-            className="w-auto bg-emerald-400 text-gray-800 font-black text-[13px] px-5 py-2.5 rounded-xl hover:bg-emerald-500 transition-all shadow-md shadow-emerald-400/10 active:scale-98"
+            className="w-auto bg-emerald-400 text-emerald-900 font-black text-sm px-5 py-2.5 rounded-xl hover:bg-emerald-500 transition-all shadow-md shadow-emerald-400/10 active:scale-98"
           >
             오늘
           </button>
@@ -176,22 +177,18 @@ export default function StatScreen() {
         <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className=" lg:col-span-2 bg-white border border-gray-100 rounded-3xl p-6 shadow-sm flex flex-col justify-between space-y-6">
             <div>
-              <h3 className="text-md font-black text-gray-800 flex items-center gap-1.5 border-b border-gray-50 pb-3">
+              <h3 className="text-lg font-black text-gray-800 flex items-center gap-1.5 border-b border-gray-50 pb-3">
                 <TrendingUp size={16} className="text-emerald-500" />
-                <span>일일 섭취한 총 영양소</span>
+                <span>영양성분 섭취 총량</span>
               </h3>
 
               <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100 flex items-center justify-between mt-4">
                 <div className="space-y-1">
-                  <span className="text-[12px] font-bold text-gray-400 block uppercase">
+                  <span className="text-[12px] font-bold text-gray-500 block uppercase">
                     TOTAL CALORIES
                   </span>
-                  <p className="text-[13px] font-semibold text-gray-500">
-                    권장 목표치{" "}
-                    <span className="font-bold text-gray-700">
-                      {RECOMMENDED_GOALS.calories}kcal
-                    </span>{" "}
-                    대비 섭취량
+                  <p className="text-[13px] font-semibold text-gray-400">
+                    일일 총 섭취 칼로리
                   </p>
                 </div>
                 <div className="flex items-baseline gap-1 text-2xl font-black text-red-500">
@@ -206,7 +203,7 @@ export default function StatScreen() {
 
               <div className="space-y-5 mt-6">
                 <div className="space-y-1.5">
-                  <div className="flex justify-between items-center text-[13px] font-bold">
+                  <div className="flex justify-between items-center text-sm font-bold">
                     <span className="text-gray-500">
                       🌾 탄수화물 ({RECOMMENDED_GOALS.carbs}g 기준)
                     </span>
@@ -225,7 +222,7 @@ export default function StatScreen() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <div className="flex justify-between items-center text-[13px] font-bold">
+                  <div className="flex justify-between items-center text-sm font-bold">
                     <span className="text-gray-500 ">
                       🍗 단백질 ({RECOMMENDED_GOALS.protein}g 기준)
                     </span>
@@ -247,7 +244,7 @@ export default function StatScreen() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <div className="flex justify-between items-center text-[13px] font-bold">
+                  <div className="flex justify-between items-center text-sm font-bold">
                     <span className="text-gray-500">
                       🥑 지방 ({RECOMMENDED_GOALS.fat}g 기준)
                     </span>
@@ -273,9 +270,10 @@ export default function StatScreen() {
           </div>
 
           <div className=" bg-white border border-gray-100 rounded-3xl p-6 shadow-sm flex flex-col">
-            <h3 className="text-md font-black text-gray-800 flex items-center gap-1.5 border-b border-gray-50 pb-3 mb-4">
-              {/* <Utensils size={15} className="text-emerald-500" /> */}
-              <span>📋 식단 기록</span>
+            <h3 className="text-lg font-black text-gray-800 flex items-center gap-1.5 border-b border-gray-50 pb-3 mb-4">
+              <Utensils size={15} className="text-emerald-500" />
+
+              <span> 식단 기록</span>
             </h3>
 
             <div className="flex-1 overflow-y-auto max-h-[360px] pr-1 space-y-2.5 custom-scrollbar">
@@ -285,21 +283,19 @@ export default function StatScreen() {
                     key={idx}
                     className="flex flex-col gap-1 bg-gray-50/80 border border-gray-100 hover:border-emerald-100 hover:bg-white rounded-xl p-3.5 transition-all shadow-sm shadow-gray-100/10 items-center"
                   >
-                    <span className="text-[12px] font-black bg-white border border-gray-200/60 text-emerald-600 px-2 py-0.5 rounded-md w-max ">
+                    <span className="text-xs font-black bg-white border border-gray-200/60 text-emerald-600 px-2 py-0.5 rounded-md w-max ">
                       {mealEmojiMap[menu.meal_time] || menu.meal_time}
                     </span>
-                    <span className="text-[15px] font-bold text-gray-800/90 mt-1 tracking-tigh text-center">
+                    <span className="text-base font-bold text-gray-800/90 mt-1 tracking-tigh text-center">
                       {menu.menu_name}
                     </span>
                   </div>
                 ))
               ) : (
                 <div className="h-full min-h-[200px] bg-gray-50/50 border border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center text-center p-4">
-                  <Activity size={22} className="text-gray-300 mb-2" />
-                  <p className="text-xs font-bold text-gray-400">
-                    해당 날짜에 기입되거나
-                    <br />
-                    추천받은 식단 기록이 비어있습니다.
+                  <ArchiveX size={22} className="text-gray-400 mb-2" />
+                  <p className="text-sm font-bold text-gray-400">
+                    해당 날짜에 추천받은 식단이 없습니다.
                   </p>
                 </div>
               )}

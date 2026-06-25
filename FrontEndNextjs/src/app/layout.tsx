@@ -78,7 +78,7 @@ export default function RootLayout({
                   </span>
                 </Link>
 
-                <nav className="space-y-1.5">
+                <nav className="space-y-1.5 ">
                   <Link href="/" className={getNavLinkClass("/")}>
                     <Utensils
                       size={18}
@@ -86,7 +86,7 @@ export default function RootLayout({
                         pathname === "/" ? "text-emerald-400" : "text-gray-400"
                       }
                     />
-                    <span>AI 추천 식단</span>
+                    <span className="text-[15px]">AI 추천 식단</span>
                   </Link>
 
                   <Link href="/stat" className={getNavLinkClass("/stat")}>
@@ -98,7 +98,7 @@ export default function RootLayout({
                           : "text-gray-400"
                       }
                     />
-                    <span>식단 통계</span>
+                    <span className="text-[15px]">식단 통계</span>
                   </Link>
 
                   <Link href="/mypage" className={getNavLinkClass("/mypage")}>
@@ -110,15 +110,15 @@ export default function RootLayout({
                           : "text-gray-400"
                       }
                     />
-                    <span>마이페이지</span>
+                    <span className="text-[15px]">마이페이지</span>
                   </Link>
                 </nav>
               </div>
 
-              <div className="pt-6 border-t border-gray-900 text-xs px-2 space-y-3">
+              <div className="pt-6 border-t border-gray-900 text-sm px-2 space-y-3 ">
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-2.5 py-2 text-gray-400 hover:text-red-400 font-bold transition-all text-left group"
+                  className="cursor-pointer w-full flex items-center gap-2.5 py-2 text-gray-400 hover:text-red-400 font-bold transition-all text-left group"
                 >
                   <LogOut
                     size={15}

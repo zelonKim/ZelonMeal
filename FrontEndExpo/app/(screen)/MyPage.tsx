@@ -26,6 +26,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 
 const { width, height } = Dimensions.get("window");
 const CARD_WIDTH = width * 0.9;
@@ -59,6 +60,7 @@ export default function MyPageScreen() {
     meal_style: "MIXED",
     disease: "없음",
     allergies: "없음",
+    created_at: "",
   });
 
   // ------------------------------------------
@@ -89,6 +91,7 @@ export default function MyPageScreen() {
         meal_style: data.meal_style || "MIXED",
         disease: data.disease || "없음",
         allergies: data.allergies || "없음",
+        created_at: data.created_at || "",
       });
     }
   }, [data]);
@@ -139,7 +142,7 @@ export default function MyPageScreen() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["userProfile"] });
-      Alert.alert("저장 완료", "유저 정보가 성공적으로 변경되었습니다!");
+      Alert.alert("저장 완료", "프로필 정보가 성공적으로 저장되었습니다!");
     },
     onError: () => {
       Alert.alert(
@@ -250,7 +253,7 @@ export default function MyPageScreen() {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#10B981" />
-        <Text style={styles.loadingText}>유저 정보를 불러오는 중...</Text>
+        <Text style={styles.loadingText}>프로필 정보를 불러오는 중...</Text>
       </View>
     );
   }
@@ -505,7 +508,12 @@ export default function MyPageScreen() {
         animationType="fade"
         onRequestClose={() => setNicknameModalVisible(false)}
       >
-        <View style={styles.modalOverlayCenter}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={[styles.modalOverlayCenter, { flex: 1 }]} // flex: 1로 전체 화면을 꽉 잡기
+          keyboardVerticalOffset={Platform.select({ ios: -200, android: -180 })} // 🎯 양대 플랫폼 완벽 고정 오프셋!
+        >
+          {/* 2. 내부는 기존 스타일 그대로 유지하여 디자인이 깨지지 않게 방어 */}
           <View style={styles.nicknameModalBox}>
             <Text style={styles.nicknameModalTitle}>✏️ 닉네임 변경</Text>
             <Text style={styles.nicknameModalSub}>
@@ -549,7 +557,7 @@ export default function MyPageScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* 카드 슬라이드 본체 패널 가드 */}
@@ -598,8 +606,12 @@ export default function MyPageScreen() {
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
             <>
-              <Save size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
               <Text style={styles.saveButtonText}>저장하기</Text>
+              <Save
+                size={19}
+                color="#FFFFFF"
+                style={{ marginLeft: 6, marginTop: 2 }}
+              />
             </>
           )}
         </TouchableOpacity>
@@ -711,8 +723,8 @@ const styles = StyleSheet.create({
     top: 10,
     right: 10,
     backgroundColor: "#4FA082", // 활력 가득한 비비드 그린 솔리드 매칭
-    paddingHorizontal: 10,
-    paddingVertical: 3,
+    paddingHorizontal: Platform.OS === "ios" ? 11 : 10,
+    paddingVertical: Platform.OS === "ios" ? 5 : 3,
     borderRadius: 10,
     shadowColor: "#10B981",
     shadowOffset: { width: 0, height: 3 },
@@ -721,7 +733,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   badgeTextLayout: {
-    fontSize: 10.5,
+    fontSize: Platform.OS === "ios" ? 11 : 10.5,
     fontWeight: "800", // 숫자가 직관적으로 튀어나오도록 최고 볼드 적용
     color: "#FFFFFF", // 흰색 폰트로 가독성 백퍼센트 확보
   },

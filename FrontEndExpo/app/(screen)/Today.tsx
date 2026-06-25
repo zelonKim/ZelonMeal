@@ -25,6 +25,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 
 const REQUIRED_PROFILE_FIELDS: Record<string, string> = {
   age: "나이",
@@ -103,10 +104,7 @@ export default function TodayScreen() {
     onSuccess: (data) => {
       queryClient.setQueryData(["todayMealPlan"], data);
       setCurrentCardIndex(0);
-      Alert.alert(
-        "설계 완료",
-        "성진님의 신체 스펙을 분석해 맞춤 식단을 구성했습니다! 🌱",
-      );
+      Alert.alert("설계 완료", "프로필을 분석해 맞춤 식단 설계했습니다 🥦");
     },
     onError: (error: any) => {
       const errorMsg =
@@ -306,7 +304,7 @@ export default function TodayScreen() {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#10B981" />
           <Text style={styles.loadingText}>
-            AI가 오늘의 식단을 구성하고 있어요... 🥑
+            AI가 오늘의 식단을 설계하고 있어요... 🥑
           </Text>
         </View>
       </View>
@@ -319,7 +317,7 @@ export default function TodayScreen() {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#10B981" />
           <Text style={styles.loadingText}>
-            오늘의 식단을 불러오고 있어요... 🌱
+            오늘의 식단을 불러오고 있어요... 🥑
           </Text>
         </View>
       </View>
@@ -384,10 +382,10 @@ export default function TodayScreen() {
               activeOpacity={0.8}
               onPress={handleOpenFeedback}
             >
-              <RefreshCw size={15} color="#064E3B" style={{ marginRight: 6 }} />
               <Text style={styles.reRecommendButtonText}>
                 식단 다시 추천받기
               </Text>
+              <RefreshCw size={16} color="#064E3B" style={{ marginLeft: 6 }} />
             </TouchableOpacity>
           </View>
         </View>
@@ -407,19 +405,24 @@ export default function TodayScreen() {
             activeOpacity={0.8}
             onPress={handleMealRecommend}
           >
-            <Text style={styles.buttonText}>AI 식단 추천받기 </Text>
-            <Sparkles size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
+            <Text style={styles.buttonText}>AI 식단 추천받기</Text>
+            <Sparkles size={19} color="#FFFFFF" style={{ marginLeft: 6 }} />
           </TouchableOpacity>
         </View>
       )}
-
       <Modal
         visible={feedbackModalVisible}
         transparent
         animationType="fade"
         onRequestClose={() => setFeedbackModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
+        {/* 1. 전체 화면 오버레이 역할과 키보드 방어를 한 몸으로 합칩니다. */}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={[styles.modalOverlay, { flex: 1 }]} // 👈 오버레이 스타일에 flex: 1이 확실히 들어가야 합니다!
+          keyboardVerticalOffset={-200}
+        >
+          {/* 2. 이제 이 박스는 화면 중앙에 예쁘게 안착한 뒤 키보드에 맞춰 부드럽게 밀려 올라갑니다. */}
           <View style={styles.feedbackModalBox}>
             <Text style={styles.feedbackModalTitle}>🔄 보완할 내용</Text>
             <Text style={styles.feedbackModalSub}>
@@ -454,7 +457,7 @@ export default function TodayScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -701,7 +704,7 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.4)",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "center",
     alignItems: "center",
   },

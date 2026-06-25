@@ -139,7 +139,7 @@ export default function MyPageScreen() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["userProfile"] });
       setNicknameModalVisible(false);
-      alert("닉네임이 성공적으로 변경되었습니다! ✨");
+      alert("닉네임이 성공적으로 변경되었습니다.");
     },
     onError: (error: any) => {
       const serverError =
@@ -183,19 +183,19 @@ export default function MyPageScreen() {
                   setNewUsername(userInfo.username);
                   setNicknameModalVisible(true);
                 }}
-                className="text-[11px] font-black bg-white hover:bg-emerald-200 border border-emerald-200 text-emerald-600 px-2.5 py-1 rounded-lg ml-2 transition-all shadow-xs"
+                className="text-[11px] font-black bg-white hover:bg-gray-100 border border-emerald-200 text-emerald-600 px-2.5 py-1 rounded-lg ml-2 transition-all shadow-xs"
               >
-                닉네임 수정
+                닉네임 변경
               </button>
             </div>
-            <p className="text-[13px] font-medium text-emerald-600  mt-1.5 flex items-center gap-1">
+            <p className="text-sm font-medium text-emerald-600  mt-1.5 flex items-center gap-1">
               <Mail size={12} /> {userInfo.email || "이메일 정보 없음"}
             </p>
           </div>
         </div>
 
         {/* 디데이 그린 엠블럼 플래그 */}
-        <div className=" md:mb-10 bg-emerald-600 shadow-lg text-white font-black text-sm px-4 py-1 rounded-lg  shadow-emerald-500/10 self-start md:self-auto flex items-center gap-1.5">
+        <div className=" md:mb-10 bg-emerald-600 shadow-lg text-white font-black text-[13px] px-4 py-1 rounded-lg  shadow-emerald-500/10 self-start md:self-auto flex items-center gap-1.5">
           <Calendar size={15} />
           <span>{getMealDayCount(userInfo.created_at)}</span>
         </div>
@@ -205,13 +205,13 @@ export default function MyPageScreen() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* 가드 1: 기본 신체 스펙 보드 */}
         <div className="bg-white border border-gray-100 p-6 rounded-3xl shadow-sm space-y-4">
-          <h3 className="text-md font-black text-gray-800 flex items-center gap-1.5 border-b border-gray-50 pb-3">
+          <h3 className="text-lg font-black text-gray-800 flex items-center gap-1.5 border-b border-gray-50 pb-3">
             <Smile size={16} className="text-emerald-500" />
             <span className="text-gray-800">기본 신체 정보</span>
           </h3>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-[13px] font-bold text-gray-400 pl-1">
+              <label className="text-sm font-bold text-gray-400 pl-1">
                 만 나이 (세)
               </label>
               <input
@@ -222,7 +222,7 @@ export default function MyPageScreen() {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[13px] font-bold text-gray-400 pl-1">
+              <label className="text-sm font-bold text-gray-400 pl-1">
                 성별
               </label>
               <div className="grid grid-cols-2 gap-1 bg-gray-50 p-1 rounded-xl border border-gray-200/40">
@@ -231,7 +231,7 @@ export default function MyPageScreen() {
                     key={choice.value}
                     type="button"
                     onClick={() => handleInputChange("gender", choice.value)}
-                    className={`py-2 text-[13px] font-bold rounded-lg transition-all ${
+                    className={`py-2 text-sm font-bold rounded-lg transition-all ${
                       userInfo.gender === choice.value
                         ? "bg-white text-emerald-600 border border-emerald-300 shadow-sm font-extrabold"
                         : "text-gray-400 hover:text-gray-600"
@@ -246,7 +246,7 @@ export default function MyPageScreen() {
 
           <div className="grid grid-cols-2 gap-4 pt-2">
             <div className="space-y-1.5">
-              <label className="text-[13px] font-bold text-gray-400 pl-1">
+              <label className="text-sm font-bold text-gray-400 pl-1">
                 현재 체중 (kg)
               </label>
               <input
@@ -260,7 +260,7 @@ export default function MyPageScreen() {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[14px] font-bold text-gray-400 pl-1">
+              <label className="text-sm font-bold text-gray-400 pl-1">
                 목표 체중 (kg)
               </label>
               <input
@@ -278,17 +278,17 @@ export default function MyPageScreen() {
 
         {/* 가드 2: 식단 관리 타겟 목적 */}
         <div className="bg-white border border-gray-100 p-6 rounded-3xl shadow-sm space-y-4">
-          <h3 className="text-md font-black text-gray-800 flex items-center gap-1.5 border-b border-gray-50 pb-3">
+          <h3 className="text-lg font-black text-gray-800 flex items-center gap-1.5 border-b border-gray-50 pb-3">
             <Activity size={16} className="text-emerald-500" />
             <span className="text-gray-800">식단 관리 목적</span>
           </h3>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 mt-8">
             {purposeChoices.map((choice) => (
               <button
                 key={choice.value}
                 type="button"
                 onClick={() => handleInputChange("purpose", choice.value)}
-                className={`p-4 text-sm font-bold rounded-xl border text-center flex items-center justify-center gap-1.5 transition-all ${
+                className={`p-4 text-[15px] font-bold rounded-xl border text-center flex items-center justify-center gap-1.5 transition-all ${
                   userInfo.purpose === choice.value
                     ? "bg-emerald-500 border-emerald-500 text-white font-black shadow-md shadow-emerald-500/10"
                     : "bg-gray-50 border-gray-200/60 text-gray-500 hover:bg-gray-100"
@@ -305,7 +305,7 @@ export default function MyPageScreen() {
 
         {/* 가드 3: 선호 식단 스타일 셀렉트 */}
         <div className="bg-white border border-gray-100 p-6 rounded-3xl shadow-sm space-y-4">
-          <h3 className="text-md font-black text-gray-800 flex items-center gap-1.5 border-b border-gray-50 pb-3">
+          <h3 className="text-lg font-black text-gray-800 flex items-center gap-1.5 border-b border-gray-50 pb-3">
             <UserIcon size={16} className="text-emerald-500" />
             <span className="text-gray-800">선호 식단 스타일</span>
           </h3>
@@ -315,7 +315,7 @@ export default function MyPageScreen() {
                 key={choice.value}
                 type="button"
                 onClick={() => handleInputChange("meal_style", choice.value)}
-                className={`w-full p-3.5 text-sm font-bold rounded-xl border text-left px-5 transition-all flex items-center justify-between ${
+                className={`w-full p-3.5 text-[15px] font-bold rounded-xl border text-left px-5 transition-all flex items-center justify-between ${
                   userInfo.meal_style === choice.value
                     ? "bg-emerald-50 border-emerald-300 text-emerald-600 font-extrabold"
                     : "bg-gray-50 border-gray-200/60 text-gray-500 hover:bg-gray-100/80"
@@ -332,13 +332,13 @@ export default function MyPageScreen() {
 
         {/* 가드 4: 메디컬 특이 건강 보드 */}
         <div className="bg-white border border-gray-100 p-6 rounded-3xl shadow-sm space-y-4">
-          <h3 className="text-md font-black text-gray-800 flex items-center gap-1.5 border-b border-gray-50 pb-3">
+          <h3 className="text-lg font-black text-gray-800 flex items-center gap-1.5 border-b border-gray-50 pb-3">
             <Heart size={16} className="text-emerald-500" />
             <span className="text-gray-800">건강 특이사항</span>
           </h3>
           <div className="space-y-3">
             <div className="space-y-1">
-              <label className="text-[13px] font-bold text-gray-400 pl-1">
+              <label className="text-sm font-bold text-gray-400 pl-1">
                 보유 질환 내역
               </label>
               <input
@@ -346,11 +346,11 @@ export default function MyPageScreen() {
                 value={userInfo.disease}
                 placeholder="예: 고혈압, 당뇨 등"
                 onChange={(e) => handleInputChange("disease", e.target.value)}
-                className="w-full bg-gray-50 text-sm font-semibold p-3 rounded-xl border border-gray-200/60 focus:outline-none focus:border-emerald-400 focus:bg-white text-gray-800 placeholder:text-gray-300"
+                className="w-full bg-gray-50 text-[15px] font-semibold p-3 rounded-xl border border-gray-200/60 focus:outline-none focus:border-emerald-400 focus:bg-white text-gray-800 placeholder:text-gray-300"
               />
             </div>
-            <div className="space-y-1">
-              <label className="text-[13px] font-bold text-gray-400 pl-1">
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-gray-400 pl-1 ">
                 알레르기 유발 유무
               </label>
               <input
@@ -358,7 +358,7 @@ export default function MyPageScreen() {
                 value={userInfo.allergies}
                 placeholder="예: 복숭아, 견과류 등"
                 onChange={(e) => handleInputChange("allergies", e.target.value)}
-                className="w-full bg-gray-50 text-sm font-semibold p-3 rounded-xl border border-gray-200/60 focus:outline-none focus:border-emerald-400 focus:bg-white text-gray-800 placeholder:text-gray-300"
+                className="w-full bg-gray-50  text-[15px] font-semibold p-3 rounded-xl border border-gray-200/60 focus:outline-none focus:border-emerald-400 focus:bg-white text-gray-800 placeholder:text-gray-300"
               />
             </div>
           </div>
@@ -376,8 +376,8 @@ export default function MyPageScreen() {
             <RotateCw className="w-5 h-5 animate-spin" />
           ) : (
             <>
-              <Save size={16} />
-              <span className="text-white">나의 정보 변경하기</span>
+              <span className="text-white text-[15px]">프로필 저장하기</span>
+              <Save size={15} />
             </>
           )}
         </button>

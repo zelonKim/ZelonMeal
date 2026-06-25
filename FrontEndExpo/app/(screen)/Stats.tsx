@@ -313,7 +313,7 @@ export default function StatScreen() {
                 activeOpacity={0.6}
                 onPress={() => jumpToPage(item - 1)}
               >
-                <ArrowLeft size={13} color={"#10B981"} />
+                <ArrowLeft size={13} color={"#18cf92"} />
                 <Text style={styles.swipeHintText}>이전일</Text>
               </TouchableOpacity>
             )}
@@ -329,7 +329,7 @@ export default function StatScreen() {
                 onPress={() => jumpToPage(item + 1)}
               >
                 <Text style={styles.swipeHintText}>다음일</Text>
-                <ArrowRight size={13} color={"#10B981"} />
+                <ArrowRight size={13} color={"#18cf92"} />
               </TouchableOpacity>
             )}
           </View>
@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "transparent",
     alignItems: "center",
-    paddingTop: 48,
+    paddingTop: Platform.OS === "ios" ? 28 : 38,
   },
   dateHeaderContainer: {
     flexDirection: "row",
@@ -489,7 +489,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   cardPage: {
-    marginTop: 45,
+    marginTop: Platform.OS === "ios" ? 25 : 45,
     width: width,
     alignItems: "center",
     justifyContent: "center",
@@ -510,14 +510,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.02,
     shadowRadius: 8,
     elevation: 3,
-    ...Platform.select({
-      ios: {
-        height: height * 0.32, // 🧼 세로 축소 양보 가드 발동
-      },
-      android: {
-        height: height * 0.41, // 🧼 안드로이드 비대함 리밸런싱 압축
-      },
-    }),
+    height: height * 0.42,
   },
   cardCenterLoading: {
     flex: 1,
@@ -571,7 +564,7 @@ const styles = StyleSheet.create({
   },
   menuItemNameText: {
     fontSize: 12,
-    fontWeight: "500",
+    fontWeight: Platform.OS === "ios" ? "600" : "500",
     color: "#374151",
     maxWidth: width * 0.95,
   },
@@ -614,8 +607,8 @@ const styles = StyleSheet.create({
   },
   swipeHintText: {
     fontSize: 12,
-    color: "#10B981", // 👈 시인성이 가장 뛰어난 딥 차콜 그레이 폰트 스위칭
-    fontWeight: "500",
+    color: "#18cf92",
+    fontWeight: Platform.OS === "ios" ? "600" : "500",
   },
   indicatorDivider: {
     width: 1,
@@ -664,7 +657,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 4,
+    marginBottom: Platform.OS === "ios" ? 10 : 6,
     paddingHorizontal: 1,
   },
   nutriLabel: {

@@ -6,12 +6,17 @@ import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
+  Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../_layout";
 
@@ -91,58 +96,82 @@ export default function Login() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.headerArea}>
-        <Text style={styles.brandSubtitle}>오늘의 건강한 한끼 식단</Text>
-        <Text style={styles.brandTitle}>ZelonMeal 🥑</Text>
-      </View>
-
-      <View style={styles.inputForm}>
-        <TextInput
-          style={styles.input}
-          placeholder="이메일을 입력해주세요"
-          placeholderTextColor="#9CA3AF"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          value={email}
-          onChangeText={setEmail}
-          editable={!loginMutation.isPending} // 로딩 중 입력 잠금
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="비밀번호를 입력해주세요"
-          placeholderTextColor="#9CA3AF"
-          secureTextEntry
-          autoCapitalize="none"
-          value={password}
-          onChangeText={setPassword}
-          editable={!loginMutation.isPending}
-        />
-
-        <TouchableOpacity
-          style={[
-            styles.loginButton,
-            loginMutation.isPending && styles.disabledButton,
-          ]}
-          onPress={handleLogin}
-          disabled={loginMutation.isPending}
+      {/* 1. 화면 전체를 유연하게 늘려줄 KeyboardAvoidingView */}
+      <KeyboardAvoidingView
+        behavior={"padding"}
+        style={{ flex: 1 }}
+        // 일반 화면에서는 헤더 높이 등을 감안해 보통 0 ~ 40 사이의 양수 값을 줍니다.
+        keyboardVerticalOffset={-10}
+      >
+        {/* 2. 인풋을 누르면 키보드 위로 자연스럽게 스크롤 되도록 설정 */}
+        <ScrollView
+          contentContainerStyle={styles.scrollContainer}
+          bounces={false}
+          showsVerticalScrollIndicator={false}
         >
-          {loginMutation.isPending ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.loginButtonText}>로그인</Text>
-          )}
-        </TouchableOpacity>
-      </View>
+          {/* 3. 인풋창 외의 빈 화면을 누르면 키보드가 스르륵 닫히는 UX 제공 */}
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={{ flex: 1, width: "100%" }}>
+              {/* [기존 코드] 헤더 영역 */}
+              <View style={styles.headerArea}>
+                <Text style={styles.brandSubtitle}>
+                  오늘의 건강한 한끼 식단
+                </Text>
+                <Text style={styles.brandTitle}>ZelonMeal 🥑</Text>
+              </View>
 
-      <View style={styles.footerArea}>
-        <Text style={styles.footerText}>계정이 없으신가요?</Text>
-        <TouchableOpacity
-          onPress={() => router.push("/(auth)/signup")}
-          disabled={loginMutation.isPending}
-        >
-          <Text style={styles.signupLinkText}>회원가입</Text>
-        </TouchableOpacity>
-      </View>
+              {/* [기존 코드] 인풋 폼 영역 */}
+              <View style={styles.inputForm}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="이메일을 입력해주세요"
+                  placeholderTextColor="#9CA3AF"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  value={email}
+                  onChangeText={setEmail}
+                  editable={!loginMutation.isPending}
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="비밀번호를 입력해주세요"
+                  placeholderTextColor="#9CA3AF"
+                  secureTextEntry
+                  autoCapitalize="none"
+                  value={password}
+                  onChangeText={setPassword}
+                  editable={!loginMutation.isPending}
+                />
+
+                <TouchableOpacity
+                  style={[
+                    styles.loginButton,
+                    loginMutation.isPending && styles.disabledButton,
+                  ]}
+                  onPress={handleLogin}
+                  disabled={loginMutation.isPending}
+                >
+                  {loginMutation.isPending ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.loginButtonText}>로그인</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+              <View style={styles.footerArea}>
+                <Text style={styles.footerText}>계정이 없으신가요?</Text>
+                <TouchableOpacity
+                  onPress={() => router.push("/(auth)/signup")}
+                  disabled={loginMutation.isPending}
+                >
+                  <Text style={styles.signupLinkText}>회원가입</Text>
+                </TouchableOpacity>
+              </View>
+              {/* [기존 코드] 푸터 영역 */}
+            </View>
+          </TouchableWithoutFeedback>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -155,7 +184,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   headerArea: {
-    marginBottom: 80,
+    marginBottom: 60,
+    marginTop: 20,
     alignItems: "center",
   },
   brandTitle: {
@@ -173,7 +203,7 @@ const styles = StyleSheet.create({
   inputForm: {
     width: "100%",
     gap: 12,
-    marginBottom: 200,
+    marginBottom: 50,
   },
   input: {
     backgroundColor: "#FFFFFF",
@@ -212,7 +242,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     gap: 8,
-    marginTop: 10,
+    marginTop: Platform.OS === "ios" ? 190 : 150,
   },
   footerText: {
     fontSize: 14,
@@ -222,5 +252,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#10B981",
     fontWeight: "bold",
+  },
+  scrollContainer: {
+    flexGrow: 1, // 스크롤 뷰 내부 내용이 화면 전체로 늘어나도록 설정
+    paddingVertical: 80, // 기존 container에 있던 패딩을 일로 이동!
+    justifyContent: "center", // 키보드가 없을 때 전체 내용을 화면 정중앙에 배치!
   },
 });

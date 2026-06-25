@@ -10,8 +10,8 @@ import React, {
   useState,
 } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -25,9 +25,11 @@ export const useAuth = () => useContext(AuthContext);
 const Providers = ({ children }: { children: ReactNode }) => {
   return (
     <GestureHandlerRootView>
-      <SafeAreaProvider>
-        <APIProvider>{children}</APIProvider>
-      </SafeAreaProvider>
+      <KeyboardProvider>
+        <SafeAreaProvider>
+          <APIProvider>{children}</APIProvider>
+        </SafeAreaProvider>
+      </KeyboardProvider>
     </GestureHandlerRootView>
   );
 };
