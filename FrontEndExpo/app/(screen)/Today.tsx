@@ -66,7 +66,7 @@ export default function TodayScreen() {
   const [userFeedback, setUserFeedback] = useState("");
 
   const { data: userProfile } = useQuery({
-    queryKey: ["userProfileData"],
+    queryKey: ["userProfile"],
     queryFn: async () => {
       const token = await SecureStore.getItemAsync("userToken");
       const response = await client.get("/v1/users/profile/", {

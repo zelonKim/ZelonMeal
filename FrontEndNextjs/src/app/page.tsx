@@ -14,7 +14,7 @@ import {
   LayoutDashboard,
   Check,
   ShoppingCartIcon,
-} from "lucide-react";
+} from "lucide-react"; // 🚀 정석 패키지명으로 원상복구!
 
 // 📝 식사 시간 매핑 이모지 딕셔너리
 const mealTimeMap: Record<string, string> = {
@@ -22,6 +22,16 @@ const mealTimeMap: Record<string, string> = {
   LUNCH: "🍱 점심 식사",
   DINNER: "🌙 저녁 식사",
   SNACK: "🧁 간식 및 디저트",
+};
+
+// 🚀 [통합 추가] DjangoPayload 기반 필수 필드 및 알림창용 한글 명칭 매핑
+const REQUIRED_PROFILE_FIELDS: Record<string, string> = {
+  age: "나이",
+  gender: "성별",
+  current_weight: "현재 체중",
+  goal_weight: "목표 체중",
+  purpose: "식단 관리 목적",
+  meal_style: "선호 식단 스타일",
 };
 
 interface MealItem {
@@ -41,7 +51,17 @@ export default function TodayMealDashboard() {
   const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
   const [userFeedback, setUserFeedback] = useState("");
 
-  // 1️⃣ [GET] 오늘의 식단 플랜 실시간 조회 API
+  // 🔍 [통합 추가] 1-A. 장고에서 유저 신체 스펙 및 프로필 데이터 실시간 조회 API
+  const { data: userProfile, isLoading: isProfileLoading } = useQuery({
+    queryKey: ["userProfile"],
+    queryFn: async () => {
+      const response = await client.get("/v1/users/profile/"); // UserProfileUpdateView 엔드포인트
+      return response.data;
+    },
+    retry: false,
+  });
+
+  // 1-B. [GET] 오늘의 식단 플랜 실시간 조회 API
   const { data: todayPlan, isLoading: isTodayLoading } = useQuery({
     queryKey: ["todayMealPlan"],
     queryFn: async () => {
@@ -59,13 +79,13 @@ export default function TodayMealDashboard() {
     },
     onSuccess: (data) => {
       queryClient.setQueryData(["todayMealPlan"], data);
-      alert("성진님의 신체 스펙을 분석해 맞춤 식단을 완벽히 구성했습니다! 🌱");
+      alert("신체 정보를 분석해 맞춤 식단을 완벽히 구성했습니다! 🌱");
     },
     onError: (error: any) => {
       const errorMsg =
         error.response?.data?.detail ||
         "AI 식단을 생성하는 중 오류가 발생했습니다.";
-      alert(`추천 실패: ${errorMsg}`);
+      alert(`추천 실패 ${errorMsg}`);
     },
   });
 
@@ -96,6 +116,41 @@ export default function TodayMealDashboard() {
     },
   });
 
+  // 🚀 [통합 추가] 웹 브라우저 표준 명세에 맞춘 프로필 데이터 무결성 검증 함수
+  const handleMealRecommend = () => {
+    if (!userProfile) {
+      alert(
+        "유저 프로필 정보를 불러오는 중입니다. 잠시 후 다시 시도해 주세요.",
+      );
+      return;
+    }
+
+    const missingFields: string[] = [];
+
+    // DjangoPayload의 필수 필드들을 돌면서 비어있는 데이터 색출
+    Object.keys(REQUIRED_PROFILE_FIELDS).forEach((field) => {
+      const value = userProfile[field];
+
+      if (
+        value === null ||
+        value === undefined ||
+        String(value).trim() === ""
+      ) {
+        missingFields.push(REQUIRED_PROFILE_FIELDS[field]);
+      }
+    });
+
+    if (missingFields.length > 0) {
+      alert(
+        `⚠️프로필 미입력 \n\nAI가 맞춤 식단을 설계할 수 있도록 마이페이지에서 다음 항목을 입력해주세요!\n\n📍 필수 입력 항목:\n- ${missingFields.join("\n- ")}`,
+      );
+      return;
+    }
+
+    // 가드 통과 시 추천 백엔드 API 작동
+    recommendMutation.mutate();
+  };
+
   // 🛒 Z마트(SSG몰) 식자재 즉시 매칭 장바구니 링크 핸들러
   const handleZMartLink = (menuName: string) => {
     if (!menuName) return;
@@ -113,10 +168,10 @@ export default function TodayMealDashboard() {
     reRecommendMutation.mutate(userFeedback.trim());
   };
 
-  // 대시보드 로딩 가드 인터셉터
+  // 대시보드 로딩 가드 인터셉터 (프로필 로딩 상태인 isProfileLoading까지 통합 체크)
   const isGlobalLoading =
     recommendMutation.isPending || reRecommendMutation.isPending;
-  if (isGlobalLoading || isTodayLoading) {
+  if (isGlobalLoading || isTodayLoading || isProfileLoading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-gray-50 h-full min-h-[600px]">
         <div className="flex flex-col items-center gap-4">
@@ -139,8 +194,6 @@ export default function TodayMealDashboard() {
       <header className="h-16 shrink-0 bg-[white] border-b border-gray-100 shadow-md flex items-center justify-between px-8  shadow-gray-50/10">
         <div className="flex items-center gap-2 text-sm font-bold text-gray-400">
           <LayoutDashboard size={16} />
-
-          {/* <span className="text-gray-300 text-lg">🥑</span> */}
           <span className="text-gray-800 text-base font-extrabold">
             오늘의 AI 추천 식단
           </span>
@@ -178,8 +231,7 @@ export default function TodayMealDashboard() {
                         <Flame size={14} className="fill-red-500" />
                         <span>
                           {item.calories}
-
-                          <span className="text-sm font-bold ml-">kcal</span>
+                          <span className="text-sm font-bold ml-1">kcal</span>
                         </span>
                       </div>
                     </div>
@@ -253,16 +305,18 @@ export default function TodayMealDashboard() {
               오늘의 추천 식단이 아직 없어요
             </h3>
             <p className="text-xs font-medium text-gray-400 mt-2 leading-relaxed">
-              성진님의 최신 신체 스펙 데이터와 식단 관리 목적을 분석하여
+              최신 신체 정보와 식단 관리 목적을 분석하여
               <br />
               완벽한 영양 성분 밸런스 식단을 설계해 드립니다.
             </p>
 
+            {/* 🚨 [통합 반영] 기존 뼈대 버튼의 단일 호출(mutate)에서 무결성 검증 가드 함수로 교체 완료! */}
             <button
-              onClick={() => recommendMutation.mutate()}
+              onClick={handleMealRecommend}
               className="w-full mt-6 flex items-center justify-center gap-2 bg-emerald-400 hover:bg-emerald-500 text-white text-sm font-black py-3 rounded-xl transition-all shadow-lg shadow-emerald-400/20 transform active:scale-98"
             >
               <span>AI 맞춤 식단 설계받기</span>
+              <Sparkles size={18} className="ml-1" />
             </button>
           </div>
         )}
