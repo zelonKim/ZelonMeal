@@ -46,6 +46,10 @@ interface MealItem {
   recipe: string;
 }
 
+// 오늘자 통계 실시간 캐시 갱신 가드
+const today = new Date();
+const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
 export default function TodayMealDashboard() {
   const queryClient = useQueryClient();
   const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
@@ -79,7 +83,7 @@ export default function TodayMealDashboard() {
     },
     onSuccess: (data) => {
       queryClient.setQueryData(["todayMealPlan"], data);
-      queryClient.setQueryData(["dailyStats"], data.daily_stats);
+      queryClient.invalidateQueries({ queryKey: ["dailyStats", todayStr] });
       alert("신체 정보를 분석해 맞춤 식단을 완벽히 구성했습니다! 🌱");
     },
     onError: (error: any) => {
@@ -100,11 +104,6 @@ export default function TodayMealDashboard() {
     },
     onSuccess: (response) => {
       queryClient.setQueryData(["todayMealPlan"], response.data);
-      queryClient.setQueryData(["dailyStats"], response.data.daily_stats);
-
-      // 오늘자 통계 실시간 캐시 갱신 가드
-      const today = new Date();
-      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
       queryClient.invalidateQueries({ queryKey: ["dailyStats", todayStr] });
 
       setFeedbackModalVisible(false);
