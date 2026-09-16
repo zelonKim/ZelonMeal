@@ -16,6 +16,7 @@ class DailyMealPlan(models.Model):
         return f"{self.user.username}의 {self.date} 하루 식단 추천"
 
 
+##################################################################
 
 
 class MealItem(models.Model):
@@ -36,7 +37,6 @@ class MealItem(models.Model):
     meal_time = models.CharField(
         max_length=10, choices=MEAL_TIME_CHOICES, verbose_name="끼니 분류"
     )
-
     menu_name = models.CharField(max_length=100, verbose_name="메뉴 이름")
     calories = models.FloatField(default=0.0, verbose_name="칼로리(kcal)")
     carbohydrates = models.FloatField(default=0.0, verbose_name="탄수화물(g)")

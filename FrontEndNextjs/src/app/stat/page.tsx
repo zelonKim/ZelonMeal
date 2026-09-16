@@ -10,61 +10,21 @@ import {
   Flame,
   Utensils,
   TrendingUp,
-  Activity,
   RotateCw,
   ArchiveX,
 } from "lucide-react";
-
-const mealEmojiMap: Record<string, string> = {
-  BREAKFAST: "☀️ 아침",
-  LUNCH: "🍱 점심",
-  DINNER: "🌙 저녁",
-  SNACK: "🧁 간식",
-};
+import { mealEmojiMap } from "@/constants/mealEmojiMap";
+import { RECOMMENDED_NUTRITION } from "@/constants/recommendedNutrition";
+import { getFormattedYYYYMMDD } from "@/utils/getFormattedYYYYMMDD";
+import { getProgressWidth } from "@/utils/getProgressWidth";
+import { Menu } from "@/types/Menu";
 
 export default function StatScreen() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  // 🔽 드롭다운 열림/닫힘 상태 관리
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  // 렌더링 영역 외 클릭 감지용 Ref 가드
+
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const RECOMMENDED_GOALS = {
-    calories: 2000,
-    carbs: 250,
-    protein: 120,
-    fat: 60,
-  };
-
-  const getFormattedYYYYMMDD = (date: Date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
-
-  const getDisplayDateString = (date: Date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    const dayOfWeek = ["일", "월", "화", "수", "목", "금", "토"][date.getDay()];
-    return `${year}년 ${month}월 ${day}일 (${dayOfWeek})`;
-  };
-
-  const currentFormattedDate = getFormattedYYYYMMDD(selectedDate);
-
-  const { data: serverStats, isLoading } = useQuery({
-    queryKey: ["dailyStats", currentFormattedDate],
-    queryFn: async () => {
-      const response = await client.get(
-        `/v1/meals/stats/?date=${currentFormattedDate}`,
-      );
-      return response.data;
-    },
-    staleTime: 1000 * 60 * 5,
-  });
-
-  // 🧼 [클릭 쉴드] 달력이 열려있을 때 바깥 빈 곳을 누르면 자동으로 드롭다운 접기
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (
@@ -77,6 +37,29 @@ export default function StatScreen() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  /////////////////////////////////////////////////////////////////
+
+  const currentFormattedDate = getFormattedYYYYMMDD(selectedDate);
+
+  const { data: mealStats, isLoading: statsLoading } = useQuery({
+    queryKey: ["dailyStats", currentFormattedDate],
+    queryFn: async () => {
+      const response = await client.get(
+        `/v1/meals/stats/?date=${currentFormattedDate}`,
+      );
+      return response.data;
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const calories = Number(mealStats?.calories ?? 0);
+  const carbs = Number(mealStats?.carbohydrates ?? 0);
+  const protein = Number(mealStats?.protein ?? 0);
+  const fat = Number(mealStats?.fat ?? 0);
+  const menuList = mealStats?.menu_names || [];
+
+  /////////////////////////////////////////////////////////////////
 
   const handlePrevDay = () => {
     const nextDate = new Date(selectedDate);
@@ -99,30 +82,14 @@ export default function StatScreen() {
   const handleDropdownDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.value) return;
     setSelectedDate(new Date(e.target.value));
-    setIsDropdownOpen(false); // 날짜 선택 시 군더더기 없이 리포트 전환 후 자동 폐쇄
+    setIsDropdownOpen(false);
   };
 
-  const getProgressWidth = (
-    current: number | undefined | null,
-    goal: number,
-  ) => {
-    const safeCurrent = current ?? 0;
-    if (safeCurrent <= 0 || !goal) return "0%";
-    const percentage = Math.min((safeCurrent / goal) * 100, 100);
-    return `${percentage}%`;
-  };
-
-  const calories = Number(serverStats?.calories ?? 0);
-  const carbs = Number(serverStats?.carbohydrates ?? 0);
-  const protein = Number(serverStats?.protein ?? 0);
-  const fat = Number(serverStats?.fat ?? 0);
-  const menuList = serverStats?.menu_names || [];
+  /////////////////////////////////////////////////////////////////////////////
 
   return (
     <div className="flex-1 bg-[#F8FAFC] p-6 max-w-6xl w-full mx-auto space-y-6 antialiased">
-      {/* 🚀 1층 툴바 존 */}
       <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-xs flex flex-row items-center justify-center gap-4">
-        {/* 기준점 배치를 위한 relative 박스 가드 래핑 */}
         <div
           ref={dropdownRef}
           className="relative flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-start"
@@ -165,8 +132,7 @@ export default function StatScreen() {
         </div>
       </div>
 
-      {/* 🔮 2층 존: 웹 최적화 와이드 양대 레이아웃 스플릿 스킨 */}
-      {isLoading ? (
+      {statsLoading ? (
         <div className="bg-white border border-gray-100 rounded-3xl p-20 flex flex-col items-center justify-center min-h-[400px]">
           <RotateCw className="w-8 h-8 text-emerald-500 animate-spin mb-3" />
           <p className="text-sm font-bold text-gray-600 animate-pulse">
@@ -205,7 +171,7 @@ export default function StatScreen() {
                 <div className="space-y-1.5">
                   <div className="flex justify-between items-center text-sm font-bold">
                     <span className="text-gray-500">
-                      🌾 탄수화물 ({RECOMMENDED_GOALS.carbs}g 기준)
+                      🌾 탄수화물 ({RECOMMENDED_NUTRITION.carbs}g 기준)
                     </span>
                     <span className="text-amber-500 font-black text-lg ">
                       {carbs}g
@@ -214,7 +180,10 @@ export default function StatScreen() {
                   <div className="w-full h-3.5 bg-gray-100 rounded-full overflow-hidden border border-gray-50">
                     <div
                       style={{
-                        width: getProgressWidth(carbs, RECOMMENDED_GOALS.carbs),
+                        width: getProgressWidth(
+                          carbs,
+                          RECOMMENDED_NUTRITION.carbs,
+                        ),
                       }}
                       className="h-full rounded-full bg-amber-400 transition-all duration-500"
                     />
@@ -224,7 +193,7 @@ export default function StatScreen() {
                 <div className="space-y-1.5">
                   <div className="flex justify-between items-center text-sm font-bold">
                     <span className="text-gray-500 ">
-                      🍗 단백질 ({RECOMMENDED_GOALS.protein}g 기준)
+                      🍗 단백질 ({RECOMMENDED_NUTRITION.protein}g 기준)
                     </span>
                     <span className="text-emerald-500 font-black text-lg ">
                       {protein}g
@@ -235,7 +204,7 @@ export default function StatScreen() {
                       style={{
                         width: getProgressWidth(
                           protein,
-                          RECOMMENDED_GOALS.protein,
+                          RECOMMENDED_NUTRITION.protein,
                         ),
                       }}
                       className="h-full rounded-full bg-emerald-400 transition-all duration-500"
@@ -246,7 +215,7 @@ export default function StatScreen() {
                 <div className="space-y-1.5">
                   <div className="flex justify-between items-center text-sm font-bold">
                     <span className="text-gray-500">
-                      🥑 지방 ({RECOMMENDED_GOALS.fat}g 기준)
+                      🥑 지방 ({RECOMMENDED_NUTRITION.fat}g 기준)
                     </span>
                     <span className="text-blue-500 font-black text-lg ">
                       {fat}g
@@ -255,7 +224,7 @@ export default function StatScreen() {
                   <div className="w-full h-3.5 bg-gray-100 rounded-full overflow-hidden border border-gray-50">
                     <div
                       style={{
-                        width: getProgressWidth(fat, RECOMMENDED_GOALS.fat),
+                        width: getProgressWidth(fat, RECOMMENDED_NUTRITION.fat),
                       }}
                       className="h-full rounded-full bg-blue-400 transition-all duration-500"
                     />
@@ -278,7 +247,7 @@ export default function StatScreen() {
 
             <div className="flex-1 overflow-y-auto max-h-[360px] pr-1 space-y-2.5 custom-scrollbar">
               {menuList.length > 0 ? (
-                menuList.map((menu: any, idx: number) => (
+                menuList.map((menu: Menu, idx: number) => (
                   <div
                     key={idx}
                     className="flex flex-col gap-1 bg-gray-50/80 border border-gray-100 hover:border-emerald-100 hover:bg-white rounded-xl p-3.5 transition-all shadow-sm shadow-gray-100/10 items-center"

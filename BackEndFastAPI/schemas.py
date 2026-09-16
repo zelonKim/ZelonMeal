@@ -2,14 +2,14 @@ from pydantic import BaseModel, Field
 from typing import List
 
 
-class DjangoPayload(BaseModel):
+class AIRecommendPayload(BaseModel):
     user_id: int
     age: int
     gender: str
     current_weight: float
     goal_weight: float
     purpose: str
-    meal_style: str 
+    meal_style: str
     disease: str | None = "없음"
     allergies: str | None = "없음"
     yesterday_meals: List[str] | None
@@ -31,10 +31,8 @@ class AIRecommendResponse(BaseModel):
     menu_list: List[MealItemResponse]
 
 
-
 class AnalyzeMenuPayload(BaseModel):
     menu_name: str
-
 
 
 class NutritionResponse(BaseModel):
@@ -42,10 +40,6 @@ class NutritionResponse(BaseModel):
     carbohydrates: float = Field(description="탄수화물(g)")
     protein: float = Field(description="단백질(g)")
     fat: float = Field(description="지방(g)")
-    
-    
-    
-
 
 
 # 🌟 1. 기존 메뉴의 상세 영양소 스펙을 수신할 서브 파이단틱 모델 선언
@@ -71,5 +65,5 @@ class AIReRecommendPayload(BaseModel):
     meal_style: str
     disease: str | None = "지병 없음"
     allergies: str | None = "알레르기 없음"
-    user_feedback: str    
+    user_feedback: str
     current_menu_list: List[CurrentMenuDetail]

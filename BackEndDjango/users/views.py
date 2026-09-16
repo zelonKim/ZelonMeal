@@ -1,4 +1,3 @@
-# users/views.py
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -26,7 +25,7 @@ class SignUpView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-#########################################
+############################################################################
 
 
 class UserProfileUpdateView(APIView):
@@ -39,10 +38,8 @@ class UserProfileUpdateView(APIView):
 
     def patch(self, request):
         user = request.user
-        # partial=True 옵션을 주어 유저가 나이만 보내든, 몸무게만 보내든 보낸 것만 쏙 고치게 만듭니다.
         serializer = UserProfileSerializer(user, data=request.data, partial=True)
 
-        # 1. 데이터 유효성 검증 (choices에 없는 값이나 말도 안 되는 데이터가 들어오면 여기서 400 에러 컷)
         if serializer.is_valid():
             serializer.save()
             return Response(

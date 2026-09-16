@@ -1,12 +1,9 @@
-
 from django.contrib import admin
 from .models import DailyMealPlan, MealItem
 
-
 class MealItemInline(admin.TabularInline):
     model = MealItem
-    extra = 0  # 기본으로 보여줄 빈 칸 개수
-
+    extra = 0 
 
 @admin.register(DailyMealPlan)
 class DailyMealPlanAdmin(admin.ModelAdmin):

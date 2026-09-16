@@ -1,9 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { client } from "@/api/client";
+import { useQuery } from "@tanstack/react-query";
 
 import {
   User as UserIcon,
@@ -11,37 +9,22 @@ import {
   Calendar,
   Check,
   Save,
-  LogOut,
   Smile,
   Activity,
   Heart,
   RotateCw,
 } from "lucide-react";
-
-// 🗂️ 셀렉트 옵션 메타 딕셔너리
-const genderChoices = [
-  { label: "남성", value: "M" },
-  { label: "여성", value: "F" },
-];
-
-const purposeChoices = [
-  { label: "다이어트", value: "LOSS" },
-  { label: "체중 유지", value: "MAINTAIN" },
-  { label: "벌크업", value: "GAIN" },
-  { label: "건강 관리", value: "HEALTH" },
-];
-
-const mealStyleChoices = [
-  { label: "한식 중심", value: "KOREAN" },
-  { label: "양식 중심", value: "WESTERN" },
-  { label: "혼합", value: "MIXED" },
-];
+import { GENDER_CHOICES } from "@/constants/genderChoices";
+import { PURPOSE_CHOICES } from "@/constants/purposeChoices";
+import { MEAL_STYLE_CHOICES } from "@/constants/mealStyleChoices";
+import { getMealDayCount } from "@/utils/getMealDayCount";
+import { getUserProfile } from "@/api/user/getUserProfile";
+import { useUpdateProfileMutation } from "@/hooks/useUpdateProfileMutation";
+import { useUpdateNicknameMutation } from "@/hooks/useUpdateNicknameMutation";
 
 export default function MyPageScreen() {
-  const queryClient = useQueryClient();
-
-  const [nicknameModalVisible, setNicknameModalVisible] = useState(false);
   const [newUsername, setNewUsername] = useState("");
+  const [nicknameModalVisible, setNicknameModalVisible] = useState(false);
 
   const [userInfo, setUserInfo] = useState({
     email: "",
@@ -57,103 +40,51 @@ export default function MyPageScreen() {
     created_at: "",
   });
 
-  // 1️⃣ [GET] 로그인한 유저 프로필 조회 API 연동 (쿠키 연동은 client.ts 인터셉터가 대행 🛡️)
-  const { data, isLoading } = useQuery({
-    queryKey: ["userProfile"],
-    queryFn: async () => {
-      const response = await client.get("/v1/users/profile/");
-      return response.data;
-    },
-    placeholderData: (previousData) => previousData,
-  });
-
-  useEffect(() => {
-    if (data) {
-      setUserInfo({
-        email: data.email || "",
-        username: data.username || "",
-        age: String(data.age || ""),
-        gender: data.gender || "M",
-        current_weight: String(data.current_weight || ""),
-        goal_weight: String(data.goal_weight || ""),
-        purpose: data.purpose || "LOSS",
-        meal_style: data.meal_style || "MIXED",
-        disease: data.disease || "",
-        allergies: data.allergies || "",
-        created_at: data.created_at || "",
-      });
-    }
-  }, [data]);
-
-  // D-Day 일차수 계산 파이프라인
-  const getMealDayCount = (createdAtStr: string) => {
-    if (!createdAtStr) return "식단 1일차";
-    try {
-      const startDate = new Date(createdAtStr.split("T")[0]);
-      const today = new Date();
-      const diffTime = today.getTime() - startDate.getTime();
-      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
-      return `식단 ${diffDays > 0 ? diffDays : 1}일차`;
-    } catch (e) {
-      return "식단 1일차";
-    }
-  };
-
-  // 2️⃣ [PATCH] 유저 신체 스펙 정보 수정 API
-  const updateProfileMutation = useMutation({
-    mutationFn: async (updatedData: typeof userInfo) => {
-      const payload = {
-        age: updatedData.age ? parseInt(updatedData.age, 10) : null,
-        gender: updatedData.gender,
-        current_weight: updatedData.current_weight
-          ? parseFloat(updatedData.current_weight)
-          : null,
-        goal_weight: updatedData.goal_weight
-          ? parseFloat(updatedData.goal_weight)
-          : null,
-        purpose: updatedData.purpose,
-        meal_style: updatedData.meal_style,
-        disease: updatedData.disease,
-        allergies: updatedData.allergies,
-      };
-      const response = await client.patch("/v1/users/profile/", payload);
-      return response.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["userProfile"] });
-      alert("프로필 정보가 성공적으로 변경되었습니다! ");
-    },
-    onError: () => {
-      alert("프로필 정보를 수정하는 중 오류가 발생했습니다.");
-    },
-  });
-
-  // 3️⃣ [PATCH] 유저 닉네임 단독 수정 API
-  const updateNicknameMutation = useMutation({
-    mutationFn: async (newNickname: string) => {
-      const response = await client.patch("/v1/users/profile/", {
-        username: newNickname,
-      });
-      return response.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["userProfile"] });
-      setNicknameModalVisible(false);
-      alert("닉네임이 성공적으로 변경되었습니다.");
-    },
-    onError: (error: any) => {
-      const serverError =
-        error.response?.data?.username?.[0] ||
-        "닉네임 변경 중 오류가 발생했습니다.";
-      alert(serverError);
-    },
-  });
-
   const handleInputChange = (field: string, value: string) => {
     setUserInfo((prev) => ({ ...prev, [field]: value }));
   };
 
-  if (isLoading) {
+  /////////////////////////////////////////////////////////////////////////
+
+  const { data: profileData, isLoading: profileLoading } = useQuery({
+    queryKey: ["userProfile"],
+    queryFn: getUserProfile,
+    placeholderData: (previousData) => previousData,
+  });
+
+  useEffect(() => {
+    if (profileData) {
+      queueMicrotask(() => {
+        setUserInfo({
+          email: profileData.email || "",
+          username: profileData.username || "",
+          age: String(profileData.age || ""),
+          gender: profileData.gender || "M",
+          current_weight: String(profileData.current_weight || ""),
+          goal_weight: String(profileData.goal_weight || ""),
+          purpose: profileData.purpose || "LOSS",
+          meal_style: profileData.meal_style || "MIXED",
+          disease: profileData.disease || "",
+          allergies: profileData.allergies || "",
+          created_at: profileData.created_at || "",
+        });
+      });
+    }
+  }, [profileData]);
+
+  /////////////////////////////////////////////////////////////////////////
+
+  const { mutate: updateProfileMutation, isPending: updateProfilePending } =
+    useUpdateProfileMutation();
+
+  const { mutate: updateNicknameMutation, isPending: updateNicknamePending } =
+    useUpdateNicknameMutation({
+      onSuccessCallback: () => setNicknameModalVisible(false),
+    });
+
+  /////////////////////////////////////////////////////////////////////////
+
+  if (profileLoading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-[#F8FAFC] min-h-[500px]">
         <RotateCw className="w-8 h-8 text-emerald-500 animate-spin mb-3" />
@@ -163,10 +94,10 @@ export default function MyPageScreen() {
       </div>
     );
   }
+  ///////////////////////////////////////////////////////////////////////////
 
   return (
     <div className="flex-1 bg-[#F8FAFC] p-8 max-w-5xl w-full mx-auto space-y-8 antialiased">
-      {/* 👑 와이드 프로필 배너 상단 카드 */}
       <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-[28px] p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden shadow-xs">
         <div className="flex items-center gap-5">
           <div className="w-16 h-16 rounded-2xl bg-white border border-emerald-100 flex items-center justify-center text-emerald-600 shadow-sm shadow-emerald-700/5">
@@ -194,16 +125,13 @@ export default function MyPageScreen() {
           </div>
         </div>
 
-        {/* 디데이 그린 엠블럼 플래그 */}
         <div className=" md:mb-10 bg-emerald-600 shadow-lg text-white font-black text-[13px] px-4 py-1 rounded-lg  shadow-emerald-500/10 self-start md:self-auto flex items-center gap-1.5">
           <Calendar size={15} />
           <span>{getMealDayCount(userInfo.created_at)}</span>
         </div>
       </div>
 
-      {/* ⚙️ 메인 스펙 컨트롤 보드 세팅 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* 가드 1: 기본 신체 스펙 보드 */}
         <div className="bg-white border border-gray-100 p-6 rounded-3xl shadow-sm space-y-4">
           <h3 className="text-lg font-black text-gray-800 flex items-center gap-1.5 border-b border-gray-50 pb-3">
             <Smile size={16} className="text-emerald-500" />
@@ -226,7 +154,7 @@ export default function MyPageScreen() {
                 성별
               </label>
               <div className="grid grid-cols-2 gap-1 bg-gray-50 p-1 rounded-xl border border-gray-200/40">
-                {genderChoices.map((choice) => (
+                {GENDER_CHOICES.map((choice) => (
                   <button
                     key={choice.value}
                     type="button"
@@ -276,14 +204,13 @@ export default function MyPageScreen() {
           </div>
         </div>
 
-        {/* 가드 2: 식단 관리 타겟 목적 */}
         <div className="bg-white border border-gray-100 p-6 rounded-3xl shadow-sm space-y-4">
           <h3 className="text-lg font-black text-gray-800 flex items-center gap-1.5 border-b border-gray-50 pb-3">
             <Activity size={16} className="text-emerald-500" />
             <span className="text-gray-800">식단 관리 목적</span>
           </h3>
           <div className="grid grid-cols-2 gap-3 mt-8">
-            {purposeChoices.map((choice) => (
+            {PURPOSE_CHOICES.map((choice) => (
               <button
                 key={choice.value}
                 type="button"
@@ -303,14 +230,13 @@ export default function MyPageScreen() {
           </div>
         </div>
 
-        {/* 가드 3: 선호 식단 스타일 셀렉트 */}
         <div className="bg-white border border-gray-100 p-6 rounded-3xl shadow-sm space-y-4">
           <h3 className="text-lg font-black text-gray-800 flex items-center gap-1.5 border-b border-gray-50 pb-3">
             <UserIcon size={16} className="text-emerald-500" />
             <span className="text-gray-800">선호 식단 스타일</span>
           </h3>
           <div className="flex flex-col gap-2">
-            {mealStyleChoices.map((choice) => (
+            {MEAL_STYLE_CHOICES.map((choice) => (
               <button
                 key={choice.value}
                 type="button"
@@ -330,7 +256,6 @@ export default function MyPageScreen() {
           </div>
         </div>
 
-        {/* 가드 4: 메디컬 특이 건강 보드 */}
         <div className="bg-white border border-gray-100 p-6 rounded-3xl shadow-sm space-y-4">
           <h3 className="text-lg font-black text-gray-800 flex items-center gap-1.5 border-b border-gray-50 pb-3">
             <Heart size={16} className="text-emerald-500" />
@@ -365,14 +290,13 @@ export default function MyPageScreen() {
         </div>
       </div>
 
-      {/* 🚀 하단 액션 제어 트레이 컨트롤러 바 */}
       <footer className="pt-4 flex gap-4">
         <button
-          onClick={() => updateProfileMutation.mutate(userInfo)}
-          disabled={updateProfileMutation.isPending}
+          onClick={() => updateProfileMutation(userInfo)}
+          disabled={updateProfilePending}
           className="flex-1 h-12 rounded-xl bg-emerald-400 text-white font-black text-sm flex items-center justify-center gap-2 hover:bg-emerald-500 transition-all shadow-md shadow-emerald-400/10"
         >
-          {updateProfileMutation.isPending ? (
+          {updateProfilePending ? (
             <RotateCw className="w-5 h-5 animate-spin" />
           ) : (
             <>
@@ -383,7 +307,6 @@ export default function MyPageScreen() {
         </button>
       </footer>
 
-      {/* ✏️ 웹 전용 닉네임 전용 오버레이 다이얼로그 모달 */}
       {nicknameModalVisible && (
         <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
           <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-gray-100/50 m-4">
@@ -419,12 +342,12 @@ export default function MyPageScreen() {
                     alert("닉네임을 최소 한 글자 이상 채워주세요!");
                     return;
                   }
-                  updateNicknameMutation.mutate(newUsername.trim());
+                  updateNicknameMutation(newUsername.trim());
                 }}
-                disabled={updateNicknameMutation.isPending}
+                disabled={updateNicknamePending}
                 className="flex-1 bg-gray-950 text-white text-sm font-bold py-3 rounded-xl hover:bg-emerald-500 transition-all flex items-center justify-center"
               >
-                {updateNicknameMutation.isPending ? (
+                {updateNicknamePending ? (
                   <RotateCw className="w-4 h-4 animate-spin" />
                 ) : (
                   "변경 완료"

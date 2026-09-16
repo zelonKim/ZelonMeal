@@ -3,7 +3,7 @@ from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 import os
 from openai import OpenAI
-from schemas import AIRecommendResponse, DjangoPayload
+from schemas import AIRecommendResponse, AIRecommendPayload
 from dotenv import load_dotenv
 from schemas import AnalyzeMenuPayload, NutritionResponse, AIReRecommendPayload
 
@@ -13,13 +13,13 @@ app = FastAPI(title="ZelonMeal AI 서버")
 
 origins = [
     "http://localhost:3000",
-    "https://zelon-meal.vercel.app",  # 👈  Next.js 배포 주소가 나오면 여기에 추가!
-    "https://zelonmeal-production.up.railway.app"
+    "https://zelon-meal.vercel.app",
+    "https://zelonmeal-production.up.railway.app",
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,  # 특정 도메인만 허용 (전체 허용 시 ["*"])
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -39,18 +39,18 @@ def get_scalar_docs():
     )
 
 
-###########################################
+#################################################################
 
 
 @app.post("/ai/v1/recommend", response_model=AIRecommendResponse)
-def get_ai_recommendation(data: DjangoPayload):
+def get_ai_recommendation(data: AIRecommendPayload):
 
     api_key = os.getenv("OPENAI_API_KEY")
 
     if not api_key:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="서버 환경 설정 오류: OpenAI API키가 누락되었습니다.",
+            detail="OpenAI API키가 누락되었습니다.",
         )
 
     try:
@@ -68,15 +68,15 @@ def get_ai_recommendation(data: DjangoPayload):
             - 보유 알레르기: {data.allergies}
             - 어제 섭취한 식단: {", ".join(data.yesterday_meals) if data.yesterday_meals else "없음"}
 
-            [중요 지침]
-            1. 선호 식단 스타일이 'KOREAN'이면 하루 모든 끼니를 한식 기반(찌개, 구이, 나물 등)으로 구성해줘.
-            2. 선호 식단 스타일이 'WESTERN'이면 하루 모든 끼니를 양식 기반(샐러드, 샌드위치, 오트밀 등)으로 구성해줘.
-            3. 선호 식단 스타일이 'MIXED'이면 아침/점심/저녁을 한식과 양식 중에서 유저가 질리지 않게 다채롭게 혼합해서 구성해줘.
+            [중요 지침]:
+            1. 선호 식단 스타일이 'KOREAN'이면 하루 모든 끼니를 한식(찌개, 구이, 나물 등)으로 구성해줘.
+            2. 선호 식단 스타일이 'WESTERN'이면 하루 모든 끼니를 양식(샐러드, 샌드위치, 오트밀 등)으로 구성해줘.
+            3. 선호 식단 스타일이 'MIXED'이면 아침/점심/저녁을 한식과 양식을 혼합해서 유저가 질리지 않도록 구성해줘.
             
             위의 유저 정보와 중요 지침을 바탕으로 유저에게 완벽히 최적화된 하루 식단(BREAKFAST, LUNCH, DINNER, SNACK)을 짜줘.
-            단, '어제 실제로 섭취한 식단'과 겹치는 메뉴는 가급적 피해서 다채롭게 구성해줘.
+            단, '어제 실제로 섭취한 식단'과 겹치는 메뉴는 피해서 구성해줘.
             보유 질환에 해롭거나 보유 알레르기를 유발하는 식재료는 절대 포함하지 말아줘.
-            각 메뉴마다 초보자도 쉽게 따라할 수 있는 단계별 조리법(recipe)을 반드시 한글로 작성해줘.
+            각 메뉴마다 초보자도 쉽게 따라할 수 있는 단계별 조리법(레시피)을 반드시 한글로 작성해줘.
             """
 
         completion = client.beta.chat.completions.parse(
@@ -100,7 +100,7 @@ def get_ai_recommendation(data: DjangoPayload):
         )
 
 
-###########################################
+#################################################################
 
 
 @app.post("/ai/v1/analyze-nutrition", response_model=NutritionResponse)
@@ -110,7 +110,7 @@ def analyze_nutrition(data: AnalyzeMenuPayload):
     if not api_key:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="서버 환경 설정 오류: OpenAI API키가 누락되었습니다.",
+            detail="OpenAI API키가 누락되었습니다.",
         )
 
     try:
@@ -140,7 +140,7 @@ def analyze_nutrition(data: AnalyzeMenuPayload):
         )
 
 
-###########################################
+##############################################################
 
 
 @app.post("/ai/v1/rerecommend", response_model=AIRecommendResponse)
@@ -149,7 +149,7 @@ def get_ai_rerecommend(data: AIReRecommendPayload):
     if not api_key:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="서버 환경 설정 오류: OpenAI API키가 누락되었습니다.",
+            detail="OpenAI API키가 누락되었습니다.",
         )
 
     try:
@@ -168,7 +168,6 @@ def get_ai_rerecommend(data: AIReRecommendPayload):
                 f"- 요리 레시피: {menu.recipe}\n"
             )
 
-        # 💡 유저가 원한 시간대만 바꾸고, 나머지는 '기존 것 복사'하도록 강제하는 초고도화 프롬프트
         rerecommend_prompt = f"""
             [유저 기본 정보]:
             - 나이: {data.age}세, 
@@ -180,29 +179,32 @@ def get_ai_rerecommend(data: AIReRecommendPayload):
             - 보유 질환: {data.disease} 
             - 보유 알레르기: {data.allergies}
 
-            [기존 추천 식단 상세 스펙 (BREAKFAST, LUNCH, DINNER, SNACK)]:
+            [기존 추천 식단 (BREAKFAST, LUNCH, DINNER, SNACK)]:
             {existing_menus_context}
 
             [유저 피드백]:
             - "{data.user_feedback}"
 
-            [재추천 지침 - 중요 🚨]
+            [재추천 지침]:
             1. [유저 피드백]을 꼼꼼히 분석하여, 유저가 수정을 요구하는 '특정 식사 시간대(예: 점심만 혹은 저녁만)'가 어디인지 먼저 파악하세요.
             2. 유저가 수정을 요구한 특정 시간대의 식사만 [유저 피드백]에 맞추어 메뉴 이름, 칼로리, 탄수화물/단백질/지방 수치, 레시피를 새롭게 생성 및 변경하세요.
             3. 유저가 피드백에서 언급하지 않은 '다른 모든 시간대의 식사'는 [기존 추천 식단]에 명시된 menu_name, calories, carbohydrates, protein, fat, recipe 데이터를 그대로 똑같이 복사하여 유지하세요. 마음대로 리뉴얼하거나 미세 조정하지 마세요.
             4. 유저가 칼로리, 탄수화물, 단백질, 지방 수치의 변경을 원할 경우에는 그에 맞춰 새로운 메뉴로 바꾸세요.
-            5. 각 메뉴마다 초보자도 쉽게 따라할 수 있는 단계별 조리법(recipe)을 반드시 한글로 작성해주세요. (유지되는 식사는 기존 레시피를 그대로 복사해주세요)
+            5. 각 메뉴마다 초보자도 쉽게 따라할 수 있는 단계별 조리법(레시피)을 반드시 한글로 작성해주세요. (유지되는 식사는 기존 레시피를 그대로 복사해주세요)
             6. 보유 질환에 해롭거나 보유 알레르기를 유발하는 식재료는 식단에 절대로 포함하지 마세요.
         """
+        
         completion = client.beta.chat.completions.parse(
             model="gpt-4o-mini",
             messages=[
                 {
                     "role": "system",
                     "content": (
-                        "너는 유저 피드백을 반영하여 기존 식단을 맞춤형으로 보완하는 전문 AI 영양사야. "
-                        "반드시 유저가 수정을 요구한 시간대의 식사만 새롭게 변경하고, 언급되지 않은 나머지 식사들은 "
-                        "기존에 제공된 원본 데이터를 그대로 유지해야해"
+                        """
+                        너는 유저 피드백을 반영하여 기존 식단을 맞춤형으로 보완하는 전문 AI 영양사야.
+                        반드시 유저가 수정을 요구한 시간대의 식사만 새롭게 변경하고, 언급되지 않은 나머지 식사들은
+                        기존에 제공된 원본 데이터를 그대로 유지해야해
+                        """
                     ),
                 },
                 {"role": "user", "content": rerecommend_prompt},
