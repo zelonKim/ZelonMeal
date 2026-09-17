@@ -6,7 +6,7 @@ Django 메인 백엔드 서버와 통신하며, 사용자의 신체 정보(나�
 
 ---
 
-## ✨ Key Features
+## 🔑 Key Features
 
 * **LLM Prompt Engineering**: AI의 역할(영양사, 식단 전문가) 및 구체적 제한 지침(영양 밸런스, 알레르기, 보유질환)을 컨텍스트로 전달하여 일관성 있는 식단 제안
 * **식단 추천 & 재추천 지원**: 신규 맞춤 식단 생성뿐만 아니라, 사용자의 피드백 및 기존 추천 식단 데이터를 반영한 재추천 기능 제공
@@ -15,7 +15,7 @@ Django 메인 백엔드 서버와 통신하며, 사용자의 신체 정보(나�
 
 ---
 
-## 🛠 기술 스택 (Tech Stack)
+## 🛠 Tech Stack
 
 * **Framework**: FastAPI
 * **AI Model Engine**: OpenAI API (`gpt-4o-mini`)

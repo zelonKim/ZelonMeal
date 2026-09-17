@@ -1,4 +1,4 @@
-# Zelon Meal - Next.js Frontend Web
+# 🌐 ZelonMeal - Next.js Frontend Web
 
 > **식단 추천 및 관리를 위한 대시보드 & 웹 애플리케이션**
 
