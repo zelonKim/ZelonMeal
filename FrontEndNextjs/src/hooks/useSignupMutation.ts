@@ -3,7 +3,7 @@ import { useRouter } from "next/navigation";
 import { AxiosError } from "axios";
 import { ApiErrorRes } from "@/types/ApiErrorRes";
 import { getErrorMessage } from "@/utils/getErrorMessage";
-import { signupApi } from "@/api/auth/signup";
+import { signupApi } from "@/api/auth/signupApi";
 
 export const useSignupMutation = () => {
   const router = useRouter();

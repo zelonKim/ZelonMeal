@@ -329,7 +329,7 @@ class ReRecommendMealView(APIView):
                 )
         except requests.exceptions.ConnectionError:
             return Response(
-                {"detail": "AI 추천 서버(FastAPI)와 연결할 수 없습니다."},
+                {"detail": "AI 추천 서버와 연결할 수 없습니다."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except Exception as e:
@@ -359,6 +359,7 @@ class ReRecommendMealView(APIView):
             MealItem.objects.bulk_create(meal_items)
 
         serializer = DailyMealPlanSerializer(daily_plan)
+        
         return Response(
             {
                 "message": "유저의 피드백을 바탕으로 오늘의 식단이 재구성되었습니다.",

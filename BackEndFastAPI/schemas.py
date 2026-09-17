@@ -1,5 +1,4 @@
 from pydantic import BaseModel, Field
-from typing import List
 
 
 class AIRecommendPayload(BaseModel):
@@ -12,7 +11,7 @@ class AIRecommendPayload(BaseModel):
     meal_style: str
     disease: str | None = "없음"
     allergies: str | None = "없음"
-    yesterday_meals: List[str] | None
+    yesterday_meals: list[str] | None
 
 
 class MealItemResponse(BaseModel):
@@ -28,7 +27,7 @@ class MealItemResponse(BaseModel):
 
 
 class AIRecommendResponse(BaseModel):
-    menu_list: List[MealItemResponse]
+    menu_list: list[MealItemResponse]
 
 
 class AnalyzeMenuPayload(BaseModel):
@@ -42,7 +41,6 @@ class NutritionResponse(BaseModel):
     fat: float = Field(description="지방(g)")
 
 
-# 🌟 1. 기존 메뉴의 상세 영양소 스펙을 수신할 서브 파이단틱 모델 선언
 class CurrentMenuDetail(BaseModel):
     id: int
     meal_time: str
@@ -54,7 +52,6 @@ class CurrentMenuDetail(BaseModel):
     recipe: str | None = "레시피 없음"
 
 
-# 🚀 2. 메인 재추천 페이로드 모델 스키마 교정
 class AIReRecommendPayload(BaseModel):
     user_id: int
     age: int
@@ -66,4 +63,4 @@ class AIReRecommendPayload(BaseModel):
     disease: str | None = "지병 없음"
     allergies: str | None = "알레르기 없음"
     user_feedback: str
-    current_menu_list: List[CurrentMenuDetail]
+    current_menu_list: list[CurrentMenuDetail]

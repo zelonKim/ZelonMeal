@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
-import { loginApi } from "@/api/auth/login";
+import { loginApi } from "@/api/auth/loginApi";
 import { AxiosError } from "axios";
 import { ApiErrorRes } from "@/types/ApiErrorRes";
 

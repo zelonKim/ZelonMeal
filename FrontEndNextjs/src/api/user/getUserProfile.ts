@@ -5,3 +5,5 @@ export const getUserProfile = async (): Promise<UserProfile> => {
   const response = await client.get<UserProfile>("/v1/users/profile/");
   return response.data;
 };
+
+

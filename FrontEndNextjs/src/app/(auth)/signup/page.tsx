@@ -42,7 +42,7 @@ export default function SignUpScreen() {
       <div className="w-full max-w-lg bg-white border border-gray-100 rounded-[32px] p-8 md:p-10 shadow-md">
         <div className="mb-9 text-left">
           <h1 className="text-3xl font-bold text-gray-800 tracking-tight flex items-center gap-2">
-            식사하셨어요? 🍚
+            식사하셨어요? 🥗
           </h1>
           <p className="text-sm font-semibold text-gray-500 my-2">
             AI로부터 건강한 식단을 추천받아보세요!

@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { client } from "@/api/client";
+import { useQuery } from "@tanstack/react-query";
 import {
   Utensils,
   Flame,
@@ -16,21 +15,21 @@ import {
 } from "lucide-react";
 import { mealTimeMap } from "@/constants/mealTimeMap";
 import { REQUIRED_PROFILE_FIELDS } from "@/constants/requiredProfileFields";
-import { TODAY_STR } from "@/constants/todayStr";
-import { AxiosError } from "axios";
-import { ApiErrorRes } from "@/types/ApiErrorRes";
+import { getUserProfile } from "@/api/user/getUserProfile";
+import { getTodayMealPlan } from "@/api/meal/getTodayMealPlan";
+import { MealItem } from "@/types/MealItem";
+import { UserProfile } from "@/types/UserProfile";
+import { useRecommendMeal } from "@/hooks/useRecommendMeal";
+import { useReRecommendMeal } from "@/hooks/useReRecommendMeal";
+import { handleZMartLink } from "@/utils/handleZMartLink";
 
 export default function TodayMealDashboard() {
-  const queryClient = useQueryClient();
   const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
   const [userFeedback, setUserFeedback] = useState("");
 
   const { data: userProfile, isLoading: isProfileLoading } = useQuery({
     queryKey: ["userProfile"],
-    queryFn: async () => {
-      const response = await client.get("/v1/users/profile/");
-      return response.data;
-    },
+    queryFn: getUserProfile,
     retry: false,
   });
 
@@ -38,34 +37,15 @@ export default function TodayMealDashboard() {
 
   const { data: todayPlan, isLoading: isTodayLoading } = useQuery({
     queryKey: ["todayMealPlan"],
-    queryFn: async () => {
-      const response = await client.get("/v1/meals/today/");
-      return response.data;
-    },
-    retry: false,
+    queryFn: getTodayMealPlan,
   });
 
   const menuList: MealItem[] = todayPlan?.menu_list || [];
 
   ///////////////////////////////////////////////////////////////////////
 
-  const recommendMutation = useMutation({
-    mutationFn: async () => {
-      const response = await client.post("/v1/meals/recommend/", {});
-      return response.data;
-    },
-    onSuccess: (data) => {
-      queryClient.setQueryData(["todayMealPlan"], data);
-      queryClient.invalidateQueries({ queryKey: ["dailyStats", TODAY_STR] });
-      alert("신체 정보를 분석해 맞춤 식단을 완벽히 구성했습니다!");
-    },
-    onError: (error: AxiosError<ApiErrorRes>) => {
-      const errorMsg =
-        error.response?.data?.detail ||
-        "AI 식단을 생성하는 중 오류가 발생했습니다.";
-      alert(`추천 실패 ${errorMsg}`);
-    },
-  });
+  const { mutate: recommendMutation, isPending: recommendPending } =
+    useRecommendMeal();
 
   const handleMealRecommend = () => {
     if (!userProfile) {
@@ -78,7 +58,7 @@ export default function TodayMealDashboard() {
     const missingFields: string[] = [];
 
     Object.keys(REQUIRED_PROFILE_FIELDS).forEach((field) => {
-      const value = userProfile[field];
+      const value = userProfile[field as keyof UserProfile];
 
       if (
         value === null ||
@@ -96,46 +76,31 @@ export default function TodayMealDashboard() {
       return;
     }
 
-    recommendMutation.mutate();
+    recommendMutation();
   };
 
   ///////////////////////////////////////////////////////////////////////
 
-  const reRecommendMutation = useMutation({
-    mutationFn: async (feedback: string) => {
-      const response = await client.post("/v1/meals/rerecommend/", {
-        user_feedback: feedback,
-      });
-      return response.data;
-    },
-    onSuccess: (response) => {
-      queryClient.setQueryData(["todayMealPlan"], response.data);
-      queryClient.invalidateQueries({ queryKey: ["dailyStats", TODAY_STR] });
-
-      setFeedbackModalVisible(false);
-      setUserFeedback("");
-      alert("피드백을 반영하여 오늘의 식단을 완전히 재구성하였습니다!");
-    },
-    onError: (error: AxiosError<ApiErrorRes>) => {
-      const errorMsg =
-        error.response?.data?.detail || "식단 재추천 중 문제가 발생했습니다.";
-      alert(`재추천 실패: ${errorMsg}`);
-    },
-  });
+  const { mutate: reRecommendMutation, isPending: reRecommendPending } =
+    useReRecommendMeal({
+      onSuccessCallback: () => {
+        setFeedbackModalVisible(false);
+        setUserFeedback("");
+      },
+    });
 
   const handleConfirmReRecommend = (e: React.FormEvent) => {
     e.preventDefault();
     if (!userFeedback.trim()) {
-      alert("식단을 보완할 피드백 내용을 입력해주세요!");
+      alert("보완할 피드백 내용을 입력해주세요!");
       return;
     }
-    reRecommendMutation.mutate(userFeedback.trim());
+    reRecommendMutation(userFeedback.trim());
   };
 
-  ///////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
 
-  const isGlobalLoading =
-    recommendMutation.isPending || reRecommendMutation.isPending;
+  const isGlobalLoading = recommendPending || reRecommendPending;
 
   if (isGlobalLoading || isTodayLoading || isProfileLoading) {
     return (
@@ -152,15 +117,6 @@ export default function TodayMealDashboard() {
     );
   }
 
-  ////////////////////////////////////////////////////////////////////////////
-
-  const handleZMartLink = (menuName: string) => {
-    if (!menuName) return;
-    const encodedKeyword = encodeURIComponent(menuName);
-    const emartWebUrl = `https://m.ssg.com/search.ssg?query=${encodedKeyword}`;
-    window.open(emartWebUrl, "_blank");
-  };
-
   /////////////////////////////////////////////////////////////////////////////
 
   return (
@@ -176,7 +132,7 @@ export default function TodayMealDashboard() {
         {menuList.length > 0 && (
           <button
             onClick={() => setFeedbackModalVisible(true)}
-            className="flex items-center gap-2 text-[13px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 px-4 py-2 rounded-xl hover:bg-emerald-100  transition-all shadow-sm"
+            className="flex items-center gap-2 text-[14px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-400 px-4 py-2 rounded-2xl hover:bg-emerald-100  transition-all shadow-sm shadow-emerald-100   cursor-pointer "
           >
             <RefreshCw size={14} />
             <span>식단 다시 추천받기</span>
@@ -255,8 +211,7 @@ export default function TodayMealDashboard() {
                     onClick={() => handleZMartLink(item.menu_name)}
                     className="w-full mt-6 flex items-center justify-center gap-2 bg-emerald-500 text-white hover:bg-emerald-400 text-sm font-bold py-2.5 rounded-xl transition-all shadow-sm"
                   >
-                    <span>Z마트 식자재 담기</span>{" "}
-                    <ShoppingCartIcon size={14} />
+                    <span>Z마트 장보기</span> <ShoppingCartIcon size={14} />
                   </button>
                 </div>
               ))}

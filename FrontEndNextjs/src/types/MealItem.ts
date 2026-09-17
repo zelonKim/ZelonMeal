@@ -1,4 +1,4 @@
-interface MealItem {
+export interface MealItem {
   id: number;
   meal_time: string;
   meal_time_display: string;

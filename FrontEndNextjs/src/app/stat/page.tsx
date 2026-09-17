@@ -18,6 +18,7 @@ import { RECOMMENDED_NUTRITION } from "@/constants/recommendedNutrition";
 import { getFormattedYYYYMMDD } from "@/utils/getFormattedYYYYMMDD";
 import { getProgressWidth } from "@/utils/getProgressWidth";
 import { Menu } from "@/types/Menu";
+import { getMealStats } from "@/api/meal/getMealStats";
 
 export default function StatScreen() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -44,12 +45,7 @@ export default function StatScreen() {
 
   const { data: mealStats, isLoading: statsLoading } = useQuery({
     queryKey: ["dailyStats", currentFormattedDate],
-    queryFn: async () => {
-      const response = await client.get(
-        `/v1/meals/stats/?date=${currentFormattedDate}`,
-      );
-      return response.data;
-    },
+    queryFn: () => getMealStats(currentFormattedDate),
     staleTime: 1000 * 60 * 5,
   });
 

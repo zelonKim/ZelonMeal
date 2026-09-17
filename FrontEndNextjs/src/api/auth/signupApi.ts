@@ -1,15 +1,6 @@
+import { SignupPayload } from "@/types/SignupPayload";
 import { client } from "../client";
-
-export interface SignupPayload {
-  email: string;
-  password: string;
-}
-
-export interface SignupResponse {
-  id?: string;
-  message?: string;
-  email?: string;
-}
+import { SignupResponse } from "@/types/SignupResponse";
 
 export const signupApi = async (
   payload: SignupPayload,
