@@ -1,4 +1,4 @@
-# ZelonMeal - Django REST Framework API Server
+# 💻 ZelonMeal - Django REST Framework API Server
 > **회원 관리, 프로필 데이터 관리, 식단 기록 및 데이터 조회를 담당하는 백엔드 메인 서버**
 
 Django REST Framework(DRF) 기반으로 구축된 RESTful API 서버로, 사용자의 신체 정보 및 프로필 데이터를 관리하며, AI가 추천한 식단 데이터, 영양성분 통계 등 플랫폼의 핵심 데이터 로직을 처리합니다.
