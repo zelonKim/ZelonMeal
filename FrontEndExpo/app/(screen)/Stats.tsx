@@ -1,6 +1,14 @@
-import { client } from "@/api/client";
+import { getMealStats } from "@/api/meal/getMealStats";
+import { height } from "@/constants/CARD_HEIGHT";
+import { CARD_WIDTH, width } from "@/constants/CARD_WIDTH";
+import { INITIAL_INDEX } from "@/constants/INITIAL_INDEX";
+import { mealEmojiMap } from "@/constants/mealEmojiMap";
+import { RECOMMENDED_NUTRITION } from "@/constants/recommendedNutrition";
+import { TIME_LINE } from "@/constants/timeLine";
+import { TODAY_STR } from "@/constants/todayString";
+import { getFormattedYYYYMMDD } from "@/utils/getFormattedYYYYMMDD";
+import { getTargetDateString } from "@/utils/getTargetDateString";
 import { useQuery } from "@tanstack/react-query";
-import * as SecureStore from "expo-secure-store";
 import {
   ArrowLeft,
   ArrowRight,
@@ -10,7 +18,7 @@ import {
 import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Dimensions,
+  DimensionValue,
   FlatList,
   Modal,
   Platform,
@@ -22,71 +30,20 @@ import {
 } from "react-native";
 import { Calendar as DatePicker } from "react-native-calendars";
 
-const { width, height } = Dimensions.get("window");
-const CARD_WIDTH = width * 0.9;
-
-// 📝 식사 시간 매핑 이모지 딕셔너리
-const mealEmojiMap: Record<string, string> = {
-  BREAKFAST: "☀️ 아침",
-  LUNCH: "🍱 점심",
-  DINNER: "🌙 저녁",
-  SNACK: "🧁 간식",
-};
-
 export default function StatScreen() {
   const flatListRef = useRef<FlatList>(null);
-  const INITIAL_INDEX = 500;
   const [currentIndex, setCurrentIndex] = useState(INITIAL_INDEX);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [tempSelectedDate, setTempSelectedDate] = useState("");
-
   const isAutoScrolling = useRef(false);
-
-  const RECOMMENDED_GOALS = {
-    calories: 2000,
-    carbs: 250,
-    protein: 120,
-    fat: 60,
-  };
-
-  const getTargetDate = (indexOffset: number) => {
-    const targetDate = new Date();
-    targetDate.setDate(targetDate.getDate() + (indexOffset - INITIAL_INDEX));
-    return targetDate;
-  };
-
-  const getTargetDateString = (indexOffset: number) => {
-    const targetDate = getTargetDate(indexOffset);
-    const year = targetDate.getFullYear();
-    const month = String(targetDate.getMonth() + 1).padStart(2, "0");
-    const date = String(targetDate.getDate()).padStart(2, "0");
-    const dayOfWeek = ["일", "월", "화", "수", "목", "금", "토"][
-      targetDate.getDay()
-    ];
-
-    return `${year}년 ${month}월 ${date}일 (${dayOfWeek})`;
-  };
-
-  const getFormattedYYYYMMDD = (indexOffset: number) => {
-    const d = getTargetDate(indexOffset);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const date = String(d.getDate()).padStart(2, "0");
-    return `${year}-${month}-${date}`;
-  };
 
   const currentFormattedDate = getFormattedYYYYMMDD(currentIndex);
 
-  const { data: serverStats, isLoading } = useQuery({
+  ////////////////////////////////////////////////////////////////
+
+  const { data: mealStats, isLoading: statsLoading } = useQuery({
     queryKey: ["dailyStats", currentFormattedDate],
-    queryFn: async () => {
-      const token = await SecureStore.getItemAsync("userToken");
-      const response = await client.get(
-        `/v1/meals/stats/?date=${currentFormattedDate}`,
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      return response.data;
-    },
+    queryFn: () => getMealStats(currentFormattedDate),
     staleTime: 1000 * 60 * 5,
   });
 
@@ -98,6 +55,8 @@ export default function StatScreen() {
   const handleDaySelect = (day: { dateString: string }) => {
     setTempSelectedDate(day.dateString);
   };
+
+  ///////////////////////////////////////////////////////////////////
 
   const handleConfirmDate = () => {
     if (!tempSelectedDate) return;
@@ -119,10 +78,14 @@ export default function StatScreen() {
     setIsModalVisible(false);
   };
 
+  ///////////////////////////////////////////////////////////////////
+
   const handleGoToToday = () => {
     if (currentIndex === INITIAL_INDEX) return;
     jumpToPage(INITIAL_INDEX);
   };
+
+  ///////////////////////////////////////////////////////////////////
 
   const handleScroll = (e: any) => {
     if (isAutoScrolling.current) return;
@@ -143,18 +106,21 @@ export default function StatScreen() {
     isAutoScrolling.current = false;
   };
 
+  //////////////////////////////////////////////////////////////////////////
+
   const jumpToPage = (targetIdx: number) => {
     if (targetIdx < 0 || targetIdx > INITIAL_INDEX) return;
-
     isAutoScrolling.current = true;
     setCurrentIndex(targetIdx);
     flatListRef.current?.scrollToIndex({ index: targetIdx, animated: true });
   };
 
+  //////////////////////////////////////////////////////////////////////////
+
   const getProgressWidth = (
     current: number | undefined | null,
     goal: number,
-  ) => {
+  ): DimensionValue => {
     const safeCurrent = current ?? 0;
     if (safeCurrent <= 0 || !goal) return "0%";
 
@@ -162,32 +128,28 @@ export default function StatScreen() {
     return `${percentage}%`;
   };
 
-  const virtualTimeline = Array.from(
-    { length: INITIAL_INDEX + 1 },
-    (_, i) => i,
-  );
-  const todayString = getFormattedYYYYMMDD(INITIAL_INDEX);
+
+  //////////////////////////////////////////////////////////////////////////
 
   const renderStatCard = ({ item }: { item: number }) => {
     const hasPastData = item > 0;
     const hasFutureData = item < INITIAL_INDEX;
     const isCurrent = item === currentIndex;
 
-    const calories = isCurrent ? Number(serverStats?.calories ?? 0) : 0;
-    const carbs = isCurrent ? Number(serverStats?.carbohydrates ?? 0) : 0;
-    const protein = isCurrent ? Number(serverStats?.protein ?? 0) : 0;
-    const fat = isCurrent ? Number(serverStats?.fat ?? 0) : 0;
+    const calories = isCurrent ? Number(mealStats?.calories ?? 0) : 0;
+    const carbs = isCurrent ? Number(mealStats?.carbohydrates ?? 0) : 0;
+    const protein = isCurrent ? Number(mealStats?.protein ?? 0) : 0;
+    const fat = isCurrent ? Number(mealStats?.fat ?? 0) : 0;
 
-    const menuNames = isCurrent ? serverStats?.menu_names || [] : [];
+    const menuNames = isCurrent ? mealStats?.menu_names || [] : [];
 
     return (
       <View style={styles.cardPage}>
         <View style={styles.statCardWrapper}>
-          {/* 🎯 [1층 메인 대시보드 카드]: 고정 높이 리밸런싱 완료 */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>🎯 영양성분 섭취 총량</Text>
 
-            {isCurrent && isLoading ? (
+            {isCurrent && statsLoading ? (
               <View style={styles.cardCenterLoading}>
                 <ActivityIndicator size="large" color="#10B981" />
                 <Text style={styles.inlineLoadingText}>
@@ -216,7 +178,7 @@ export default function StatScreen() {
                           {
                             width: getProgressWidth(
                               carbs,
-                              RECOMMENDED_GOALS.carbs,
+                              RECOMMENDED_NUTRITION.carbs,
                             ),
                             backgroundColor: "#FBBF24",
                           },
@@ -239,7 +201,7 @@ export default function StatScreen() {
                           {
                             width: getProgressWidth(
                               protein,
-                              RECOMMENDED_GOALS.protein,
+                              RECOMMENDED_NUTRITION.protein,
                             ),
                             backgroundColor: "#34D399",
                           },
@@ -258,7 +220,10 @@ export default function StatScreen() {
                         style={[
                           styles.progressActive,
                           {
-                            width: getProgressWidth(fat, RECOMMENDED_GOALS.fat),
+                            width: getProgressWidth(
+                              fat,
+                              RECOMMENDED_NUTRITION.fat,
+                            ),
                             backgroundColor: "#60A5FA",
                           },
                         ]}
@@ -270,11 +235,10 @@ export default function StatScreen() {
             )}
           </View>
 
-          {/* 🌟 [2층 쉘]: 수직 패딩 압축 개조 완료 */}
           <View style={styles.menuHistoryCard}>
             <Text style={styles.menuHistoryTitle}>📋 섭취 식단 리스트</Text>
 
-            {isCurrent && isLoading ? (
+            {isCurrent && statsLoading ? (
               <View style={styles.menuHorizontalLoadingBox}>
                 <ActivityIndicator size="small" color="#10B981" />
               </View>
@@ -305,7 +269,6 @@ export default function StatScreen() {
             )}
           </View>
 
-          {/* 🛠️ [3층 쉘]: 이탈 현상을 막고 시인성을 획기적으로 올린 알약 배지형 인디케이터 라우터 */}
           <View style={styles.swipeIndicatorRow}>
             {hasPastData && (
               <TouchableOpacity
@@ -338,6 +301,8 @@ export default function StatScreen() {
     );
   };
 
+  //////////////////////////////////////////////////////////////////////////
+
   return (
     <View style={styles.mainContainer}>
       <View style={styles.dateHeaderContainer}>
@@ -363,7 +328,7 @@ export default function StatScreen() {
 
       <FlatList
         ref={flatListRef}
-        data={virtualTimeline}
+        data={TIME_LINE}
         renderItem={renderStatCard}
         keyExtractor={(item) => item.toString()}
         horizontal
@@ -404,7 +369,7 @@ export default function StatScreen() {
             <DatePicker
               current={tempSelectedDate}
               onDayPress={handleDaySelect}
-              maxDate={todayString}
+              maxDate={TODAY_STR}
               markedDates={{
                 [tempSelectedDate]: {
                   selected: true,
@@ -442,6 +407,8 @@ export default function StatScreen() {
     </View>
   );
 }
+
+//////////////////////////////////////////////////////////////////////////
 
 const styles = StyleSheet.create({
   mainContainer: {
@@ -587,7 +554,6 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 
-  // 🌟 [전면 리폼] 배경 유실 버그를 완벽히 격파한 알약 프레임 워크 인디케이터 스펙
   swipeIndicatorRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -601,8 +567,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 6,
     paddingHorizontal: 24,
-    paddingVertical: 9, // 🧼 높이를 압축하여 세로 한계선 돌파 가드 가동
-    backgroundColor: "#F3F4F6", // 👈 은은하고 정돈된 전용 백그라운드 쉴드 장착
+    paddingVertical: 9,
+    backgroundColor: "#F3F4F6",
     borderRadius: 10,
   },
   swipeHintText: {

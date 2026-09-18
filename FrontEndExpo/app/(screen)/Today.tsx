@@ -1,6 +1,13 @@
-import { client } from "@/api/client";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import * as SecureStore from "expo-secure-store";
+import { getTodayMealPlan } from "@/api/meal/getTodayMealPlan";
+import { getUserProfile } from "@/api/user/getUserProfile";
+import { CARD_WIDTH, width } from "@/constants/CARD_WIDTH";
+import { mealTimeMap } from "@/constants/mealTimeMap";
+import { REQUIRED_PROFILE_FIELDS } from "@/constants/requiredProfileFields";
+import { useRecommendMeal } from "@/hooks/useRecommendMeal";
+import { useReRecommendMeal } from "@/hooks/useReRecommendMeal";
+import { MealItem } from "@/types/MealItem";
+import { UserProfile } from "@/types/UserProfile";
+import { useQuery } from "@tanstack/react-query";
 import {
   BookOpen,
   Flame,
@@ -13,7 +20,6 @@ import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Dimensions,
   FlatList,
   Linking,
   Modal,
@@ -27,149 +33,24 @@ import {
 } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 
-const REQUIRED_PROFILE_FIELDS: Record<string, string> = {
-  age: "나이",
-  current_weight: "현재 체중",
-  goal_weight: "목표 체중",
-  gender: "성별",
-  purpose: "식단 관리 목적",
-  meal_style: "선호 식단 스타일",
-};
-
-const { width, height } = Dimensions.get("window");
-const CARD_WIDTH = width * 0.88;
-
-const mealTimeMap: Record<string, string> = {
-  BREAKFAST: "☀️ 아침 식사",
-  LUNCH: "🍱 점심 식사",
-  DINNER: "🌙 저녁 식사",
-  SNACK: "🧁 간식 및 디저트",
-};
-
-interface MealItem {
-  id: number;
-  meal_time: string;
-  meal_time_display: string;
-  menu_name: string;
-  calories: number;
-  carbohydrates: number;
-  protein: number;
-  fat: number;
-  recipe: string;
-}
-
 export default function TodayScreen() {
-  const queryClient = useQueryClient();
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
-
   const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
   const [userFeedback, setUserFeedback] = useState("");
 
-  const { data: userProfile } = useQuery({
+  ///////////////////////////////////////////////////////////////////////
+
+  const { data: userProfile, isLoading: isProfileLoading } = useQuery({
     queryKey: ["userProfile"],
-    queryFn: async () => {
-      const token = await SecureStore.getItemAsync("userToken");
-      const response = await client.get("/v1/users/profile/", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      return response.data;
-    },
-    retry: false,
+    queryFn: getUserProfile,
   });
 
-  // 1️⃣ [GET] 오늘의 식단 플랜 실시간 조회
-  const { data: todayPlan, isLoading: isTodayLoading } = useQuery({
-    queryKey: ["todayMealPlan"],
-    queryFn: async () => {
-      const token = await SecureStore.getItemAsync("userToken");
-      const response = await client.get("/v1/meals/today/", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      return response.data;
-    },
-    retry: false,
-  });
+  ///////////////////////////////////////////////////////////////////////
 
-  // 2️⃣ [POST] 최초 AI 추천 식단 생성 요청 연동
-  const recommendMutation = useMutation({
-    mutationFn: async () => {
-      const token = await SecureStore.getItemAsync("userToken");
-      const response = await client.post(
-        "/v1/meals/recommend/",
-        {},
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      return response.data;
-    },
-    onSuccess: (data) => {
-      queryClient.setQueryData(["todayMealPlan"], data);
-      setCurrentCardIndex(0);
-      Alert.alert("설계 완료", "프로필을 분석해 맞춤 식단 설계했습니다 🥦");
-    },
-    onError: (error: any) => {
-      const errorMsg =
-        error.response?.data?.detail ||
-        "AI 식단을 생성하는 중 오류가 발생했습니다.";
-      Alert.alert("추천 실패", errorMsg);
-    },
-  });
-
-  // 3️⃣ [POST] 유저 피드백 기반 AI 식단 재추천 연동
-  const reRecommendMutation = useMutation({
-    mutationFn: async (feedback: string) => {
-      const token = await SecureStore.getItemAsync("userToken");
-      const response = await client.post(
-        "/v1/meals/rerecommend/",
-        { user_feedback: feedback },
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      return response.data;
-    },
-    onSuccess: (response) => {
-      queryClient.setQueryData(["todayMealPlan"], response.data);
-
-      const today = new Date();
-      const year = today.getFullYear();
-      const month = String(today.getMonth() + 1).padStart(2, "0");
-      const date = String(today.getDate()).padStart(2, "0");
-      const todayFormattedStr = `${year}-${month}-${date}`;
-
-      queryClient.invalidateQueries({
-        queryKey: ["dailyStats", todayFormattedStr],
-      });
-      setCurrentCardIndex(0);
-      setFeedbackModalVisible(false);
-      setUserFeedback("");
-      Alert.alert(
-        "재구성 완료",
-        "피드백을 반영하여 오늘의 식단을 재구성 하였습니다!",
-      );
-    },
-    onError: (error: any) => {
-      const errorMsg =
-        error.response?.data?.detail || "식단 재추천 중 문제가 발생했습니다.";
-      Alert.alert("재추천 실패", errorMsg);
-    },
-  });
-
-  const handleZMartLink = async () => {
-    const currentMenu = todayPlan?.menu_list?.[currentCardIndex];
-    if (!currentMenu?.menu_name) {
-      Alert.alert("알림", "검색할 메뉴 정보가 존재하지 않습니다.");
-      return;
-    }
-    const encodedKeyword = encodeURIComponent(currentMenu.menu_name);
-
-    const emartWebUrl = `https://m.ssg.com/search.ssg?query=${encodedKeyword}`;
-    try {
-      await Linking.openURL(emartWebUrl);
-    } catch (err) {
-      Alert.alert("Z마트 접속 실패");
-    }
-  };
+  const { mutate: recommendMutation, isPending: recommendPending } =
+    useRecommendMeal();
 
   const handleMealRecommend = () => {
-    // 1. 프로필 데이터를 조회하지 못했거나 통신 전일 때의 방어 가드
     if (!userProfile) {
       Alert.alert(
         "알림",
@@ -180,18 +61,14 @@ export default function TodayScreen() {
 
     const missingFields: string[] = [];
 
-    // 2. DjangoPayload의 필수 필드들을 돌면서 데이터가 비어있는지 체크
     Object.keys(REQUIRED_PROFILE_FIELDS).forEach((field) => {
-      const value = userProfile[field];
+      const value = userProfile[field as keyof UserProfile];
 
-      // 어제 먹은 식단 리스트(List[str])인 경우 배열이 비었거나 null인지 검사
       if (field === "yesterday_meals") {
         if (!value || !Array.isArray(value) || value.length === 0) {
           missingFields.push(REQUIRED_PROFILE_FIELDS[field]);
         }
-      }
-      // 그 외 일반 필드들의 null, undefined, 빈 문자열 유무 정밀 검사
-      else {
+      } else {
         if (
           value === null ||
           value === undefined ||
@@ -210,20 +87,88 @@ export default function TodayScreen() {
       return;
     }
 
-    recommendMutation.mutate();
+    recommendMutation();
   };
 
-  const handleOpenFeedback = () => {
-    setFeedbackModalVisible(true);
-  };
+  ///////////////////////////////////////////////////////////////////////
+
+  const { mutate: reRecommendMutation, isPending: reRecommendPending } =
+    useReRecommendMeal({
+      onSuccessCallback: () => {
+        setFeedbackModalVisible(false);
+        setUserFeedback("");
+      },
+    });
 
   const handleConfirmReRecommend = () => {
     if (!userFeedback.trim()) {
       Alert.alert("입력 오류", "식단을 보완할 피드백 내용을 입력해주세요!");
       return;
     }
-    reRecommendMutation.mutate(userFeedback.trim());
+    reRecommendMutation(userFeedback.trim());
   };
+
+  const handleOpenFeedback = () => {
+    setFeedbackModalVisible(true);
+  };
+
+  ///////////////////////////////////////////////////////////////////////
+
+  const { data: todayPlan, isLoading: isTodayLoading } = useQuery({
+    queryKey: ["todayMealPlan"],
+    queryFn: getTodayMealPlan,
+  });
+
+  const menuList: MealItem[] = todayPlan?.menu_list || [];
+
+  ///////////////////////////////////////////////////////////////////////
+
+  const isGlobalLoading = recommendPending || reRecommendPending;
+
+  if (isGlobalLoading) {
+    return (
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#10B981" />
+          <Text style={styles.loadingText}>
+            AI가 오늘의 식단을 설계하고 있어요... 🥑
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (isTodayLoading) {
+    return (
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#10B981" />
+          <Text style={styles.loadingText}>
+            오늘의 식단을 불러오고 있어요... 🥑
+          </Text>
+        </View>
+      </View>
+    );
+  }
+  ///////////////////////////////////////////////////////////////////////
+
+  const handleZMartLink = async () => {
+    const currentMenu = todayPlan?.menu_list?.[currentCardIndex];
+    if (!currentMenu?.menu_name) {
+      Alert.alert("알림", "검색할 메뉴 정보가 존재하지 않습니다.");
+      return;
+    }
+    const encodedKeyword = encodeURIComponent(currentMenu.menu_name);
+
+    const emartWebUrl = `https://m.ssg.com/search.ssg?query=${encodedKeyword}`;
+    try {
+      await Linking.openURL(emartWebUrl);
+    } catch (err) {
+      Alert.alert("Z마트 접속 실패");
+    }
+  };
+
+  ///////////////////////////////////////////////////////////////////////
 
   const handleScroll = (e: any) => {
     const offset = e.nativeEvent.contentOffset.x;
@@ -234,13 +179,14 @@ export default function TodayScreen() {
     }
   };
 
+  ///////////////////////////////////////////////////////////////////////
+
   const renderMealCard = ({ item }: { item: MealItem }) => {
     const formatRecipe = (recipe: string | null) => {
       if (!recipe) return "레시피 정보가 없습니다.";
       const flattenedRecipe = recipe.replace(/[\r\n]+/g, " ").trim();
       return flattenedRecipe.replace(/(?!^)(?=\d+\.)/g, "\n");
     };
-
     return (
       <View style={styles.cardPage}>
         <View style={styles.mealCard}>
@@ -296,35 +242,7 @@ export default function TodayScreen() {
     );
   };
 
-  const isGlobalLoading =
-    recommendMutation.isPending || reRecommendMutation.isPending;
-  if (isGlobalLoading) {
-    return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#10B981" />
-          <Text style={styles.loadingText}>
-            AI가 오늘의 식단을 설계하고 있어요... 🥑
-          </Text>
-        </View>
-      </View>
-    );
-  }
-
-  if (isTodayLoading) {
-    return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#10B981" />
-          <Text style={styles.loadingText}>
-            오늘의 식단을 불러오고 있어요... 🥑
-          </Text>
-        </View>
-      </View>
-    );
-  }
-
-  const menuList = todayPlan?.menu_list || [];
+  ///////////////////////////////////////////////////////////////////////
 
   return (
     <View style={styles.container}>
@@ -345,7 +263,6 @@ export default function TodayScreen() {
             </TouchableOpacity>
           </View>
           <View style={styles.cardContainer}>
-            {/* 🌟 [구조 변경] 타이틀과 배민 B마트 퀵 버튼 인라인 일체형 배치 */}
             <View style={styles.titleHeaderInlineRow}>
               <Text style={styles.screenTitle}>🥑 오늘의 AI 추천 식단</Text>
             </View>
@@ -416,13 +333,11 @@ export default function TodayScreen() {
         animationType="fade"
         onRequestClose={() => setFeedbackModalVisible(false)}
       >
-        {/* 1. 전체 화면 오버레이 역할과 키보드 방어를 한 몸으로 합칩니다. */}
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={[styles.modalOverlay, { flex: 1 }]} // 👈 오버레이 스타일에 flex: 1이 확실히 들어가야 합니다!
+          style={[styles.modalOverlay, { flex: 1 }]}
           keyboardVerticalOffset={-200}
         >
-          {/* 2. 이제 이 박스는 화면 중앙에 예쁘게 안착한 뒤 키보드에 맞춰 부드럽게 밀려 올라갑니다. */}
           <View style={styles.feedbackModalBox}>
             <Text style={styles.feedbackModalTitle}>🔄 보완할 내용</Text>
             <Text style={styles.feedbackModalSub}>
@@ -462,6 +377,8 @@ export default function TodayScreen() {
     </View>
   );
 }
+
+///////////////////////////////////////////////////////////////////////
 
 const styles = StyleSheet.create({
   container: {

@@ -1,6 +1,14 @@
-import { client } from "@/api/client";
-import { useAuth } from "@/app/_layout";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { getUserProfile } from "@/api/user/getUserProfile";
+
+import { CARD_HEIGHT } from "@/constants/CARD_HEIGHT";
+import { CARD_WIDTH, width } from "@/constants/CARD_WIDTH";
+import { GENDER_CHOICES } from "@/constants/genderChoices";
+import { MEAL_STYLE_CHOICES } from "@/constants/mealStyleChoices";
+import { PURPOSE_CHOICES } from "@/constants/purposeChoices";
+import { useUpdateNicknameMutation } from "@/hooks/useUpdateNicknameMutation";
+import { useUpdateProfileMutation } from "@/hooks/useUpdateProfileMutation";
+import { useAuth } from "@/utils/AuthContext";
+import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import {
@@ -14,7 +22,6 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Dimensions,
   FlatList,
   Modal,
   Platform,
@@ -28,27 +35,15 @@ import {
 } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 
-const { width, height } = Dimensions.get("window");
-const CARD_WIDTH = width * 0.9;
-const CARD_HEIGHT = Platform.select({
-  ios: height * 0.33,
-  android: height * 0.38,
-  default: height * 0.4,
-});
-
 export default function MyPageScreen() {
-  const flatListRef = useRef<FlatList>(null);
   const router = useRouter();
-  const queryClient = useQueryClient();
+  const flatListRef = useRef<FlatList>(null);
   const { checkAuthStatus } = useAuth();
 
   const [currentStep, setCurrentStep] = useState(0);
   const [menuVisible, setMenuVisible] = useState(false);
-
-  // 닉네임 수정 팝업 제어용 레이어 상태
   const [nicknameModalVisible, setNicknameModalVisible] = useState(false);
   const [newUsername, setNewUsername] = useState("");
-
   const [userInfo, setUserInfo] = useState({
     email: "",
     username: "",
@@ -63,40 +58,34 @@ export default function MyPageScreen() {
     created_at: "",
   });
 
-  // ------------------------------------------
-  // 1️⃣ [GET] 로그인한 유저 프로필 조회 API 연동
-  // ------------------------------------------
-  const { data, isLoading } = useQuery({
+  /////////////////////////////////////////////////////////////////////////
+
+  const { data: profileData, isLoading: profileLoading } = useQuery({
     queryKey: ["userProfile"],
-    queryFn: async () => {
-      const token = await SecureStore.getItemAsync("userToken");
-      const response = await client.get("/v1/users/profile/", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      return response.data;
-    },
+    queryFn: getUserProfile,
     placeholderData: (previousData) => previousData,
   });
 
   useEffect(() => {
-    if (data) {
+    if (profileData) {
       setUserInfo({
-        email: data.email || "",
-        username: data.username || "",
-        age: String(data.age || ""),
-        gender: data.gender || "M",
-        current_weight: String(data.current_weight || ""),
-        goal_weight: String(data.goal_weight || ""),
-        purpose: data.purpose || "HEALTH",
-        meal_style: data.meal_style || "MIXED",
-        disease: data.disease || "없음",
-        allergies: data.allergies || "없음",
-        created_at: data.created_at || "",
+        email: profileData.email || "",
+        username: profileData.username || "",
+        age: String(profileData.age || ""),
+        gender: profileData.gender || "M",
+        current_weight: String(profileData.current_weight || ""),
+        goal_weight: String(profileData.goal_weight || ""),
+        purpose: profileData.purpose || "HEALTH",
+        meal_style: profileData.meal_style || "MIXED",
+        disease: profileData.disease || "없음",
+        allergies: profileData.allergies || "없음",
+        created_at: profileData.created_at || "",
       });
     }
-  }, [data]);
+  }, [profileData]);
 
-  // 가입일 기반 오늘이 몇 일차인지 디데이 계산기 파이프라인
+  /////////////////////////////////////////////////////////////////////////
+
   const getMealDayCount = (createdAtStr: string) => {
     if (!createdAtStr) return "식단 1일차";
 
@@ -113,74 +102,12 @@ export default function MyPageScreen() {
     }
   };
 
-  // ------------------------------------------
-  // 2️⃣ [PATCH] 유저 신체 스펙 정보 수정 API 연동
-  // ------------------------------------------
-  const updateProfileMutation = useMutation({
-    mutationFn: async (updatedData: typeof userInfo) => {
-      const token = await SecureStore.getItemAsync("userToken");
+  /////////////////////////////////////////////////////////////////////////
 
-      const payload = {
-        age: updatedData.age ? parseInt(updatedData.age, 10) : null,
-        gender: updatedData.gender,
-        current_weight: updatedData.current_weight
-          ? parseFloat(updatedData.current_weight)
-          : null,
-        goal_weight: updatedData.goal_weight
-          ? parseFloat(updatedData.goal_weight)
-          : null,
-        purpose: updatedData.purpose,
-        meal_style: updatedData.meal_style,
-        disease: updatedData.disease,
-        allergies: updatedData.allergies,
-      };
-
-      const response = await client.patch("/v1/users/profile/", payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      return response.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["userProfile"] });
-      Alert.alert("저장 완료", "프로필 정보가 성공적으로 저장되었습니다!");
-    },
-    onError: () => {
-      Alert.alert(
-        "저장 실패",
-        "프로필 정보를 수정하는 중 오류가 발생했습니다.",
-      );
-    },
-  });
-
-  // ------------------------------------------
-  // 3️⃣ [PATCH] 유저 닉네임(username) 단독 수정 API 연동
-  // ------------------------------------------
-  const updateNicknameMutation = useMutation({
-    mutationFn: async (newNickname: string) => {
-      const token = await SecureStore.getItemAsync("userToken");
-      const response = await client.patch(
-        "/v1/users/profile/",
-        { username: newNickname },
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      return response.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["userProfile"] });
-      setNicknameModalVisible(false);
-      Alert.alert("변경 완료", "닉네임이 성공적으로 변경되었습니다!");
-    },
-    onError: (error: any) => {
-      const serverError =
-        error.response?.data?.username?.[0] ||
-        "닉네임 변경 중 오류가 발생했습니다.";
-      Alert.alert("변경 실패", serverError);
-    },
-  });
-
-  const handleSaveChanges = () => {
-    updateProfileMutation.mutate(userInfo);
-  };
+  const { mutate: updateNicknameMutation, isPending: updateNicknamePending } =
+    useUpdateNicknameMutation({
+      onSuccessCallback: () => setNicknameModalVisible(false),
+    });
 
   const handleChangeNickname = () => {
     setMenuVisible(false);
@@ -193,8 +120,19 @@ export default function MyPageScreen() {
       Alert.alert("입력 오류", "닉네임을 한 글자 이상 입력해 주세요.");
       return;
     }
-    updateNicknameMutation.mutate(newUsername.trim());
+    updateNicknameMutation(newUsername.trim());
   };
+
+  /////////////////////////////////////////////////////////////////////////
+
+  const { mutate: updateProfileMutation, isPending: updateProfilePending } =
+    useUpdateProfileMutation();
+
+  const handleSaveChanges = () => {
+    updateProfileMutation(userInfo);
+  };
+
+  /////////////////////////////////////////////////////////////////////////
 
   const handleLogout = () => {
     setMenuVisible(false);
@@ -217,23 +155,7 @@ export default function MyPageScreen() {
     ]);
   };
 
-  const genderChoices = [
-    { label: "남성", value: "M" },
-    { label: "여성", value: "F" },
-  ];
-
-  const purposeChoices = [
-    { label: "다이어트", value: "LOSS" },
-    { label: "체중 유지", value: "MAINTAIN" },
-    { label: "벌크업", value: "GAIN" },
-    { label: "건강 관리", value: "HEALTH" },
-  ];
-
-  const mealStyleChoices = [
-    { label: "한식 중심", value: "KOREAN" },
-    { label: "양식 중심", value: "WESTERN" },
-    { label: "혼합", value: "MIXED" },
-  ];
+  /////////////////////////////////////////////////////////////////////////
 
   const handleInputChange = (field: string, value: string) => {
     setUserInfo((prev) => ({ ...prev, [field]: value }));
@@ -247,9 +169,9 @@ export default function MyPageScreen() {
     }
   };
 
-  const stepsData = [0, 1, 2, 3];
+  /////////////////////////////////////////////////////////////////////////
 
-  if (isLoading) {
+  if (profileLoading) {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color="#10B981" />
@@ -257,6 +179,10 @@ export default function MyPageScreen() {
       </View>
     );
   }
+
+  const stepsData = [0, 1, 2, 3];
+
+  ///////////////////////////////////////////////////////////////////////////
 
   const renderCardItem = ({ item }: { item: number }) => {
     return (
@@ -279,7 +205,7 @@ export default function MyPageScreen() {
                   <View style={styles.inputWrapper}>
                     <Text style={styles.inputLabel}>성별</Text>
                     <View style={styles.chipGroup}>
-                      {genderChoices.map((choice) => (
+                      {GENDER_CHOICES.map((choice) => (
                         <TouchableOpacity
                           key={choice.value}
                           style={[
@@ -337,7 +263,7 @@ export default function MyPageScreen() {
             <View style={styles.cardInner}>
               <Text style={styles.cardTitle}>🎯 식단 관리 목적</Text>
               <View style={styles.gridGroup}>
-                {purposeChoices.map((choice) => (
+                {PURPOSE_CHOICES.map((choice) => (
                   <TouchableOpacity
                     key={choice.value}
                     style={[
@@ -373,7 +299,7 @@ export default function MyPageScreen() {
             <View style={styles.cardInner}>
               <Text style={styles.cardTitle}>🍱 선호 식단 스타일</Text>
               <View style={styles.chipGroupFull}>
-                {mealStyleChoices.map((choice) => (
+                {MEAL_STYLE_CHOICES.map((choice) => (
                   <TouchableOpacity
                     key={choice.value}
                     style={[
@@ -431,9 +357,10 @@ export default function MyPageScreen() {
     );
   };
 
+  ///////////////////////////////////////////////////////////////////////////
+
   return (
     <View style={styles.mainContainer}>
-      {/* 🚀 전용 민트 배너 내부 우측 상단에 정교하게 배치된 프리미엄 디데이 뱃지 레이아웃 */}
       <View style={styles.profileHeader}>
         <View style={styles.badgeAbsolutePosition}>
           <Text style={styles.badgeTextLayout}>
@@ -441,7 +368,6 @@ export default function MyPageScreen() {
           </Text>
         </View>
         <View style={styles.profileInfoLeft}>
-          {/* 아바타 영역 (텍스트 공백 싹 제거하여 크래시 완전 방멸) */}
           <TouchableOpacity
             style={styles.avatarBorderRing}
             onPress={() => setMenuVisible(true)}
@@ -453,7 +379,6 @@ export default function MyPageScreen() {
           </TouchableOpacity>
 
           <Pressable onPress={() => setMenuVisible(true)}>
-            {/* 텍스트 영역: 서브 정보 가독성 보강 */}
             <View style={styles.headerTextSide}>
               <View style={styles.nameBadgeRow}>
                 <Text style={styles.usernameText} numberOfLines={1}>
@@ -468,11 +393,9 @@ export default function MyPageScreen() {
               </View>
             </View>
           </Pressable>
-          {/* 🎯 [신규 이식] 프로필 헤더 카드 우측 상단에 절묘하게 흐르는 스페셜 그린 뱃지 */}
         </View>
       </View>
 
-      {/* 아바타 드롭다운 모달 */}
       <Modal
         visible={menuVisible}
         transparent
@@ -501,7 +424,6 @@ export default function MyPageScreen() {
         </TouchableWithoutFeedback>
       </Modal>
 
-      {/* 닉네임 입력 전용 프레임 모달 */}
       <Modal
         visible={nicknameModalVisible}
         transparent
@@ -510,10 +432,9 @@ export default function MyPageScreen() {
       >
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={[styles.modalOverlayCenter, { flex: 1 }]} // flex: 1로 전체 화면을 꽉 잡기
-          keyboardVerticalOffset={Platform.select({ ios: -200, android: -180 })} // 🎯 양대 플랫폼 완벽 고정 오프셋!
+          style={[styles.modalOverlayCenter, { flex: 1 }]}
+          keyboardVerticalOffset={Platform.select({ ios: -200, android: -180 })}
         >
-          {/* 2. 내부는 기존 스타일 그대로 유지하여 디자인이 깨지지 않게 방어 */}
           <View style={styles.nicknameModalBox}>
             <Text style={styles.nicknameModalTitle}>✏️ 닉네임 변경</Text>
             <Text style={styles.nicknameModalSub}>
@@ -543,13 +464,12 @@ export default function MyPageScreen() {
                 style={[
                   styles.modalBtn,
                   styles.modalConfirmBtn,
-                  updateNicknameMutation.isPending &&
-                    styles.modalConfirmBtnDisabled,
+                  updateNicknamePending && styles.modalConfirmBtnDisabled,
                 ]}
                 onPress={handleConfirmNickname}
-                disabled={updateNicknameMutation.isPending}
+                disabled={updateNicknamePending}
               >
-                {updateNicknameMutation.isPending ? (
+                {updateNicknamePending ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
                   <Text style={styles.modalConfirmBtnText}>변경 완료</Text>
@@ -560,7 +480,6 @@ export default function MyPageScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* 카드 슬라이드 본체 패널 가드 */}
       <View style={styles.contentCenterWrapper}>
         <View style={{ height: CARD_HEIGHT }}>
           <FlatList
@@ -597,12 +516,12 @@ export default function MyPageScreen() {
         <TouchableOpacity
           style={[
             styles.saveButton,
-            updateProfileMutation.isPending && styles.saveButtonDisabled,
+            updateProfilePending && styles.saveButtonDisabled,
           ]}
           onPress={handleSaveChanges}
-          disabled={updateProfileMutation.isPending}
+          disabled={updateProfilePending}
         >
-          {updateProfileMutation.isPending ? (
+          {updateProfilePending ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
             <>
@@ -619,6 +538,8 @@ export default function MyPageScreen() {
     </View>
   );
 }
+
+///////////////////////////////////////////////////////////////////////////
 
 const styles = StyleSheet.create({
   mainContainer: {
@@ -646,7 +567,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   profileHeader: {
-    position: "relative", // 👈 내부 자식 요소의 절대 좌표 배치를 잡기 위한 기준점 마련
+    position: "relative",
     flexDirection: "row",
     alignItems: "center",
     width: CARD_WIDTH,
@@ -713,16 +634,14 @@ const styles = StyleSheet.create({
   },
   subText: {
     fontSize: 13,
-    color: "#047857", // 가독성을 보완하기 위한 조명 최적화 소프트 에메랄드 그린
+    color: "#047857",
     fontWeight: "500",
   },
-
-  // 🌟 [신규 스타일] 프로필 배너 우측 상단에 딱 붙을 럭셔리 네이티브 뱃지 좌표계
   badgeAbsolutePosition: {
     position: "absolute",
     top: 10,
     right: 10,
-    backgroundColor: "#4FA082", // 활력 가득한 비비드 그린 솔리드 매칭
+    backgroundColor: "#4FA082",
     paddingHorizontal: Platform.OS === "ios" ? 11 : 10,
     paddingVertical: Platform.OS === "ios" ? 5 : 3,
     borderRadius: 10,
@@ -734,10 +653,9 @@ const styles = StyleSheet.create({
   },
   badgeTextLayout: {
     fontSize: Platform.OS === "ios" ? 11 : 10.5,
-    fontWeight: "800", // 숫자가 직관적으로 튀어나오도록 최고 볼드 적용
-    color: "#FFFFFF", // 흰색 폰트로 가독성 백퍼센트 확보
+    fontWeight: "800",
+    color: "#FFFFFF",
   },
-
   saveButton: {
     flexDirection: "row",
     backgroundColor: "#10B981",

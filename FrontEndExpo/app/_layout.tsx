@@ -1,38 +1,16 @@
-import { APIProvider } from "@/api/api-provider";
+
 import { SplashScreen, Stack } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { StatusBar } from "expo-status-bar";
 import React, {
-  createContext,
-  ReactNode,
   useContext,
   useEffect,
   useState,
 } from "react";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { SafeAreaProvider } from "react-native-safe-area-context";
-import { KeyboardProvider } from "react-native-keyboard-controller";
+import { AuthContext } from "@/utils/AuthContext";
+import { Providers } from "@/app/Providers";
 
 SplashScreen.preventAutoHideAsync();
-
-const AuthContext = createContext<{
-  isLoggedIn: boolean;
-  checkAuthStatus: () => Promise<void>;
-}>({ isLoggedIn: false, checkAuthStatus: async () => {} });
-
-export const useAuth = () => useContext(AuthContext);
-
-const Providers = ({ children }: { children: ReactNode }) => {
-  return (
-    <GestureHandlerRootView>
-      <KeyboardProvider>
-        <SafeAreaProvider>
-          <APIProvider>{children}</APIProvider>
-        </SafeAreaProvider>
-      </KeyboardProvider>
-    </GestureHandlerRootView>
-  );
-};
 
 export default function RootLayout() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
@@ -56,15 +34,19 @@ export default function RootLayout() {
     initializeApp();
   }, []);
 
+
   useEffect(() => {
     if (isReady && isLoggedIn !== null) {
       SplashScreen.hideAsync();
     }
   }, [isReady, isLoggedIn]);
 
+
   if (!isReady || isLoggedIn === null) {
     return null;
   }
+
+  ////////////////////////////////////////////////////////////////////
 
   return (
     <AuthContext.Provider value={{ isLoggedIn, checkAuthStatus }}>
