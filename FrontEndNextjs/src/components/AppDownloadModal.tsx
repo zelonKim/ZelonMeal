@@ -4,7 +4,6 @@ import { PLATFORM_CONFIG } from "@/constants/platformConfig";
 import { AppDownloadModalProps } from "@/types/AppDownloadModalProps";
 import { PlatformTab } from "@/types/PlatformTab";
 
-
 export default function AppDownloadModal({
   isOpen,
   onClose,
@@ -30,7 +29,7 @@ export default function AppDownloadModal({
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-all"
+          className="cursor-pointer hover:bg-gray-100 rounded-3xl p-1.5 absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-all"
         >
           <X size={20} />
         </button>
@@ -56,7 +55,7 @@ export default function AppDownloadModal({
               className={`flex-1 py-2 text-[13px] font-bold rounded-lg transition-all capitalize ${
                 activeTab === tab
                   ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-400 hover:text-gray-600"
+                  : "cursor-pointer text-gray-400 hover:text-gray-600"
               }`}
             >
               {tab === "android" ? "Android" : "iOS"}

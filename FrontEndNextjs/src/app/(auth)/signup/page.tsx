@@ -93,7 +93,7 @@ export default function SignUpScreen() {
             type="button"
             onClick={handleSignup}
             disabled={signupPending}
-            className={`w-full h-13 mt-4 flex items-center justify-center gap-2 rounded-xl text-md font-bold text-white transition-all shadow-md active:scale-[0.99] ${
+            className={`cursor-pointer w-full h-13 mt-4 flex items-center justify-center gap-2 rounded-xl text-md font-bold text-white transition-all shadow-md active:scale-[0.99] ${
               signupPending
                 ? "bg-emerald-300 cursor-wait"
                 : "bg-emerald-400 hover:bg-emerald-500 shadow-emerald-400/20"

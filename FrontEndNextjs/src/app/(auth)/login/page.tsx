@@ -101,7 +101,7 @@ export default function LoginScreen() {
             <button
               type="submit"
               disabled={loginPending}
-              className={`w-full h-13 mt-6 flex items-center justify-center gap-2 rounded-xl text-md font-bold text-white transition-all shadow-md active:scale-[0.99] ${
+              className={`cursor-pointer w-full h-13 mt-6 flex items-center justify-center gap-2 rounded-xl text-md font-bold text-white transition-all shadow-md active:scale-[0.99] ${
                 loginPending
                   ? "bg-emerald-300 shadow-none cursor-wait"
                   : "bg-emerald-400 hover:bg-emerald-500 shadow-emerald-400/20"
