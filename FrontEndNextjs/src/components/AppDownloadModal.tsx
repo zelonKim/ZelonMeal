@@ -1,8 +1,11 @@
+"use client";
+
 import { useState } from "react";
 import { X, ScanQrCode } from "lucide-react";
 import { PLATFORM_CONFIG } from "@/constants/platformConfig";
 import { AppDownloadModalProps } from "@/types/AppDownloadModalProps";
 import { PlatformTab } from "@/types/PlatformTab";
+import { useAppDownloadLanguage } from "@/hooks/languages/useAppDownloadLanguage";
 
 export default function AppDownloadModal({
   isOpen,
@@ -14,9 +17,12 @@ export default function AppDownloadModal({
     ios: false,
   });
 
+  const { t } = useAppDownloadLanguage();
+
   if (!isOpen) return null;
 
   const currentConfig = PLATFORM_CONFIG[activeTab];
+  const currentText = t.platforms[activeTab];
   const isCurrentQrError = qrErrors[activeTab];
 
   const handleQrError = (platform: PlatformTab) => {
@@ -38,12 +44,8 @@ export default function AppDownloadModal({
           <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center mx-auto mb-2">
             <ScanQrCode size={20} className="text-emerald-500" />
           </div>
-          <h3 className="text-lg font-bold text-gray-900">
-            ZelonMeal 앱 다운로드
-          </h3>
-          <p className="text-[13px] text-gray-500 mt-1 mb-8">
-            QR 코드를 스캔하여 앱을 설치해 보세요
-          </p>
+          <h3 className="text-lg font-bold text-gray-950">{t.title}</h3>
+          <p className="text-[13px] text-gray-500 mt-1 mb-8">{t.subtitle}</p>
         </div>
 
         <div className="flex bg-gray-100 p-1 rounded-xl mb-6">
@@ -58,7 +60,7 @@ export default function AppDownloadModal({
                   : "cursor-pointer text-gray-400 hover:text-gray-600"
               }`}
             >
-              {tab === "android" ? "Android" : "iOS"}
+              {tab === "android" ? t.androidTab : t.iosTab}
             </button>
           ))}
         </div>
@@ -67,14 +69,14 @@ export default function AppDownloadModal({
           <div className="w-44 h-44 bg-gray-50 border border-gray-200/60 rounded-2xl flex items-center justify-center p-2 mb-4 shadow-inner">
             {isCurrentQrError ? (
               <span className="text-[11px] font-semibold text-gray-400 px-4 text-center">
-                {activeTab === "android" ? "Android" : "iOS"}
+                {activeTab === "android" ? t.androidTab : t.iosTab}
                 <br />
-                QR 준비 중
+                {t.qrReadying}
               </span>
             ) : (
               <img
                 src={currentConfig.qrSrc}
-                alt={currentConfig.alt}
+                alt={currentText.alt}
                 className="w-full h-full object-contain"
                 onError={() => handleQrError(activeTab)}
               />
@@ -87,12 +89,12 @@ export default function AppDownloadModal({
             <span
               className={`text-[13px] font-bold block mb-1 ${currentConfig.theme.strongText}`}
             >
-              {currentConfig.guideTitle}
+              {currentText.guideTitle}
             </span>
             <p
               className={`text-[12px] leading-relaxed font-medium ${currentConfig.theme.badgeText}`}
             >
-              {currentConfig.guideSteps}
+              {currentText.guideSteps}
             </p>
           </div>
         </div>

@@ -6,11 +6,14 @@ import { useRouter, usePathname } from "next/navigation";
 import { Utensils, User, ChartColumnIncreasing, LogOut } from "lucide-react";
 import Cookies from "js-cookie";
 import Providers from "@/app/providers";
+import { useLayoutLanguage } from "@/hooks/languages/useLayoutLanguage";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
+
+  const { t } = useLayoutLanguage(); // 👈 다국어 훅 사용
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -22,7 +25,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const handleLogout = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (confirm("정말 로그아웃 하시겠습니까?")) {
+    if (confirm(t.confirmLogout)) {
       Cookies.remove("userToken");
       Cookies.remove("refreshToken");
       router.replace("/login");
@@ -71,7 +74,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   pathname === "/" ? "text-emerald-400" : "text-gray-400"
                 }
               />
-              <span className="text-[15px]">AI 추천 식단</span>
+              <span className="text-[15px]">{t.recommendedMeal}</span>
             </Link>
 
             <Link href="/stat" className={getNavLinkClass("/stat")}>
@@ -81,7 +84,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   pathname === "/stat" ? "text-emerald-400" : "text-gray-400"
                 }
               />
-              <span className="text-[15px]">식단 통계</span>
+              <span className="text-[15px]">{t.mealStats}</span>
             </Link>
 
             <Link href="/mypage" className={getNavLinkClass("/mypage")}>
@@ -91,7 +94,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   pathname === "/mypage" ? "text-emerald-400" : "text-gray-400"
                 }
               />
-              <span className="text-[15px]">마이페이지</span>
+              <span className="text-[15px]">{t.myPage}</span>
             </Link>
           </nav>
         </div>
@@ -105,7 +108,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               size={15}
               className="group-hover:translate-x-0.5 transition-transform"
             />
-            <span>로그아웃</span>
+            <span>{t.logout}</span>
           </button>
           <p className="text-[10px] text-gray-600 pt-1">
             © 2026 ZelonMeal Corp.

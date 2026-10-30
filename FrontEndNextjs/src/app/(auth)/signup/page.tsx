@@ -3,12 +3,14 @@ import React, { useState } from "react";
 import { RefreshCw, Mail, Lock, CheckCircle2, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useSignupMutation } from "@/hooks/useSignupMutation";
+import { useSignupLanguage } from "@/hooks/languages/useSignupLanguage";
 
 export default function SignUpScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
 
+  const { t } = useSignupLanguage();
   const { mutate: signupMutation, isPending: signupPending } =
     useSignupMutation();
 
@@ -16,36 +18,34 @@ export default function SignUpScreen() {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailRegex.test(email)) {
-      alert("올바른 이메일 형식이 아닙니다.");
+      alert(t.alertEmail);
       return false;
     }
 
     const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
 
     if (!passwordRegex.test(password)) {
-      alert("비밀번호는 영문과 숫자를 조합하여 8자리 이상 입력해주세요.");
+      alert(t.alertPassword);
       return false;
     }
 
     if (password !== passwordConfirm) {
-      alert("비밀번호가 일치하지 않습니다.");
+      alert(t.alertPasswordMismatch);
       return false;
     }
 
     signupMutation({ email, password });
   };
 
-  ///////////////////////////////////////////////////////////////////////////////
-
   return (
     <div className="min-h-screen bg-[#030712] flex items-center justify-center p-4 antialiased">
       <div className="w-full max-w-lg bg-white border border-gray-100 rounded-[32px] p-8 md:p-10 shadow-md">
         <div className="mb-9 text-left">
           <h1 className="text-3xl font-bold text-gray-800 tracking-tight flex items-center gap-2">
-            식사하셨어요? 🥗
+            {t.title}
           </h1>
           <p className="text-sm font-semibold text-gray-500 my-2">
-            AI로부터 건강한 식단을 추천받아보세요!
+            {t.subtitle}
           </p>
         </div>
 
@@ -56,8 +56,8 @@ export default function SignUpScreen() {
               disabled={signupPending}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="이메일 주소"
-              className=" w-full bg-gray-50 text-[15px] font-medium pl-11 pr-4 py-3.5 rounded-xl border border-gray-200/80 focus:outline-none focus:border-emerald-400 focus:bg-white text-gray-800"
+              placeholder={t.emailPlaceholder}
+              className="w-full bg-gray-50 text-[15px] font-medium pl-11 pr-4 py-3.5 rounded-xl border border-gray-200/80 focus:outline-none focus:border-emerald-400 focus:bg-white text-gray-800"
             />
             <Mail size={16} className="absolute left-4 top-4.5 text-gray-400" />
           </div>
@@ -68,7 +68,7 @@ export default function SignUpScreen() {
               disabled={signupPending}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="비밀번호 (영문/숫자 조합 8자 이상)"
+              placeholder={t.passwordPlaceholder}
               className="w-full bg-gray-50 text-[15px] font-medium pl-11 pr-4 py-3.5 rounded-xl border border-gray-200/80 focus:outline-none focus:border-emerald-400 focus:bg-white text-gray-800"
             />
             <Lock size={16} className="absolute left-4 top-4.5 text-gray-400" />
@@ -80,7 +80,7 @@ export default function SignUpScreen() {
               disabled={signupPending}
               value={passwordConfirm}
               onChange={(e) => setPasswordConfirm(e.target.value)}
-              placeholder="비밀번호 확인"
+              placeholder={t.passwordConfirmPlaceholder}
               className="w-full bg-gray-50 text-[15px] font-medium pl-11 pr-4 py-3.5 rounded-xl border border-gray-200/80 focus:outline-none focus:border-emerald-400 focus:bg-white text-gray-800"
             />
             <CheckCircle2
@@ -103,7 +103,7 @@ export default function SignUpScreen() {
               <RefreshCw size={16} className="animate-spin" />
             ) : (
               <>
-                <span>시작하기</span>
+                <span>{t.startButton}</span>
                 <ArrowRight size={14} strokeWidth={2.5} />
               </>
             )}
@@ -111,12 +111,12 @@ export default function SignUpScreen() {
         </div>
 
         <div className="mt-8 pt-6 border-t border-gray-100 flex items-center justify-center gap-2 text-sm font-semibold text-gray-400">
-          <span>이미 계정이 있으신가요?</span>
+          <span>{t.hasAccount}</span>
           <Link
             href="/login"
             className="text-emerald-500 font-bold hover:text-emerald-600"
           >
-            로그인
+            {t.loginLink}
           </Link>
         </div>
       </div>

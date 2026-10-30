@@ -2,11 +2,10 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { client } from "@/api/client";
+
 import {
   ChevronLeft,
   ChevronRight,
-  Calendar as CalendarIcon,
   Flame,
   Utensils,
   TrendingUp,
@@ -19,12 +18,15 @@ import { getFormattedYYYYMMDD } from "@/utils/getFormattedYYYYMMDD";
 import { getProgressWidth } from "@/utils/getProgressWidth";
 import { Menu } from "@/types/Menu";
 import { getMealStats } from "@/api/meal/getMealStats";
+import { useStatLanguage } from "@/hooks/languages/useStatLanguage";
 
 export default function StatScreen() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const { t } = useStatLanguage(); 
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -39,14 +41,11 @@ export default function StatScreen() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  /////////////////////////////////////////////////////////////////
-
   const currentFormattedDate = getFormattedYYYYMMDD(selectedDate);
 
   const { data: mealStats, isLoading: statsLoading } = useQuery({
     queryKey: ["dailyStats", currentFormattedDate],
     queryFn: () => getMealStats(currentFormattedDate),
-    staleTime: 1000 * 60 * 5,
   });
 
   const calories = Number(mealStats?.calories ?? 0);
@@ -54,8 +53,6 @@ export default function StatScreen() {
   const protein = Number(mealStats?.protein ?? 0);
   const fat = Number(mealStats?.fat ?? 0);
   const menuList = mealStats?.menu_names || [];
-
-  /////////////////////////////////////////////////////////////////
 
   const handlePrevDay = () => {
     const nextDate = new Date(selectedDate);
@@ -81,8 +78,6 @@ export default function StatScreen() {
     setIsDropdownOpen(false);
   };
 
-  /////////////////////////////////////////////////////////////////////////////
-
   return (
     <div className="flex-1 bg-[#F8FAFC] p-6 max-w-6xl w-full mx-auto space-y-6 antialiased">
       <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-xs flex flex-row items-center justify-center gap-4">
@@ -92,18 +87,18 @@ export default function StatScreen() {
         >
           <button
             onClick={handlePrevDay}
-            className="p-2 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-600 transition-all border border-gray-200/40 shadow-sm active:scale-95"
+            className="cursor-pointer p-2 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-600 transition-all border border-gray-200/40 shadow-sm active:scale-95"
           >
             <ChevronLeft size={16} strokeWidth={2.5} />
           </button>
 
-          <div className=" bg-white  shadow-sm rounded-2xl z-40 w-40  ">
+          <div className="bg-white shadow-sm rounded-2xl z-40 w-40">
             <input
               type="date"
               max={getFormattedYYYYMMDD(new Date())}
               value={currentFormattedDate}
               onChange={handleDropdownDateChange}
-              className="w-full bg-gray-50 border border-gray-200 hover:bg-gray-100  focus:border-emerald-400 focus:bg-white focus:outline-none py-2 px-6 rounded-xl text-[14.5px] font-black text-gray-800 cursor-pointer text-center"
+              className="w-full bg-gray-50 border border-gray-200 hover:bg-gray-100 focus:border-emerald-400 focus:bg-white focus:outline-none py-2 px-6 rounded-xl text-[14.5px] font-black text-gray-800 cursor-pointer text-center"
             />
           </div>
           <button
@@ -112,7 +107,7 @@ export default function StatScreen() {
               getFormattedYYYYMMDD(selectedDate) ===
               getFormattedYYYYMMDD(new Date())
             }
-            className="p-2 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-600 transition-all border border-gray-200/40 disabled:opacity-30 disabled:cursor-not-allowed shadow-sm active:scale-95"
+            className="cursor-pointer p-2 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-600 transition-all border border-gray-200/40 disabled:opacity-30 disabled:cursor-not-allowed shadow-sm active:scale-95"
           >
             <ChevronRight size={16} strokeWidth={2.5} />
           </button>
@@ -121,9 +116,9 @@ export default function StatScreen() {
         <div className="w-24 flex justify-start ms-2">
           <button
             onClick={handleGoToToday}
-            className="w-auto bg-emerald-400 text-emerald-900 font-black text-sm px-5 py-2.5 rounded-xl hover:bg-emerald-500 transition-all shadow-md shadow-emerald-400/10 active:scale-98"
+            className="cursor-pointer w-auto bg-emerald-400 text-emerald-950 font-black text-sm px-5 py-2.5 rounded-xl hover:bg-emerald-500 transition-all shadow-md shadow-emerald-400/10 active:scale-98"
           >
-            오늘
+            {t.todayButton}
           </button>
         </div>
       </div>
@@ -132,25 +127,25 @@ export default function StatScreen() {
         <div className="bg-white border border-gray-100 rounded-3xl p-20 flex flex-col items-center justify-center min-h-[400px]">
           <RotateCw className="w-8 h-8 text-emerald-500 animate-spin mb-3" />
           <p className="text-sm font-bold text-gray-600 animate-pulse">
-            날짜별 통계 데이터를 불러오고 있어요...
+            {t.loadingStat}
           </p>
         </div>
       ) : (
         <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className=" lg:col-span-2 bg-white border border-gray-100 rounded-3xl p-6 shadow-sm flex flex-col justify-between space-y-6">
+          <div className="lg:col-span-2 bg-white border border-gray-100 rounded-3xl p-6 shadow-sm flex flex-col justify-between space-y-6">
             <div>
               <h3 className="text-lg font-black text-gray-800 flex items-center gap-1.5 border-b border-gray-50 pb-3">
                 <TrendingUp size={16} className="text-emerald-500" />
-                <span>영양성분 섭취 총량</span>
+                <span>{t.nutritionTitle}</span>
               </h3>
 
               <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100 flex items-center justify-between mt-4">
                 <div className="space-y-1">
                   <span className="text-[12px] font-bold text-gray-500 block uppercase">
-                    TOTAL CALORIES
+                    {t.totalCalories}
                   </span>
                   <p className="text-[13px] font-semibold text-gray-400">
-                    일일 총 섭취 칼로리
+                    {t.totalCaloriesDesc}
                   </p>
                 </div>
                 <div className="flex items-baseline gap-1 text-2xl font-black text-red-500">
@@ -159,7 +154,9 @@ export default function StatScreen() {
                     className="fill-red-500 text-red-500 self-center mr-1"
                   />
                   <span>{calories}</span>
-                  <span className="text-xs font-bold text-red-400">kcal</span>
+                  <span className="text-xs font-bold text-red-400">
+                    {t.kcal}
+                  </span>
                 </div>
               </div>
 
@@ -167,9 +164,10 @@ export default function StatScreen() {
                 <div className="space-y-1.5">
                   <div className="flex justify-between items-center text-sm font-bold">
                     <span className="text-gray-500">
-                      🌾 탄수화물 ({RECOMMENDED_NUTRITION.carbs}g 기준)
+                      🌾 {t.carbsLabel} ({RECOMMENDED_NUTRITION.carbs}g{" "}
+                      {t.basedOn})
                     </span>
-                    <span className="text-amber-500 font-black text-lg ">
+                    <span className="text-amber-500 font-black text-lg">
                       {carbs}g
                     </span>
                   </div>
@@ -188,10 +186,11 @@ export default function StatScreen() {
 
                 <div className="space-y-1.5">
                   <div className="flex justify-between items-center text-sm font-bold">
-                    <span className="text-gray-500 ">
-                      🍗 단백질 ({RECOMMENDED_NUTRITION.protein}g 기준)
+                    <span className="text-gray-500">
+                      🍗 {t.proteinLabel} ({RECOMMENDED_NUTRITION.protein}g{" "}
+                      {t.basedOn})
                     </span>
-                    <span className="text-emerald-500 font-black text-lg ">
+                    <span className="text-emerald-500 font-black text-lg">
                       {protein}g
                     </span>
                   </div>
@@ -211,9 +210,9 @@ export default function StatScreen() {
                 <div className="space-y-1.5">
                   <div className="flex justify-between items-center text-sm font-bold">
                     <span className="text-gray-500">
-                      🥑 지방 ({RECOMMENDED_NUTRITION.fat}g 기준)
+                      🥑 {t.fatLabel} ({RECOMMENDED_NUTRITION.fat}g {t.basedOn})
                     </span>
-                    <span className="text-blue-500 font-black text-lg ">
+                    <span className="text-blue-500 font-black text-lg">
                       {fat}g
                     </span>
                   </div>
@@ -230,15 +229,14 @@ export default function StatScreen() {
             </div>
 
             <div className="text-[11px] font-semibold text-gray-400 text-right pt-2 border-t border-gray-50/60">
-              * 최신 신체 정보 기준 일일 섭취 밸런스 매트릭스 가이드라인입니다.
+              {t.guideNotice}
             </div>
           </div>
 
-          <div className=" bg-white border border-gray-100 rounded-3xl p-6 shadow-sm flex flex-col">
+          <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm flex flex-col">
             <h3 className="text-lg font-black text-gray-800 flex items-center gap-1.5 border-b border-gray-50 pb-3 mb-4">
               <Utensils size={15} className="text-emerald-500" />
-
-              <span> 식단 기록</span>
+              <span>{t.mealRecordTitle}</span>
             </h3>
 
             <div className="flex-1 overflow-y-auto max-h-[360px] pr-1 space-y-2.5 custom-scrollbar">
@@ -248,10 +246,10 @@ export default function StatScreen() {
                     key={idx}
                     className="flex flex-col gap-1 bg-gray-50/80 border border-gray-100 hover:border-emerald-100 hover:bg-white rounded-xl p-3.5 transition-all shadow-sm shadow-gray-100/10 items-center"
                   >
-                    <span className="text-xs font-black bg-white border border-gray-200/60 text-emerald-600 px-2 py-0.5 rounded-md w-max ">
+                    <span className="text-xs font-black bg-white border border-gray-200/60 text-emerald-600 px-2 py-0.5 rounded-md w-max">
                       {mealEmojiMap[menu.meal_time] || menu.meal_time}
                     </span>
-                    <span className="text-base font-bold text-gray-800/90 mt-1 tracking-tigh text-center">
+                    <span className="text-base font-bold text-gray-800/90 mt-1 tracking-tight text-center">
                       {menu.menu_name}
                     </span>
                   </div>
@@ -260,7 +258,7 @@ export default function StatScreen() {
                 <div className="h-full min-h-[200px] bg-gray-50/50 border border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center text-center p-4">
                   <ArchiveX size={22} className="text-gray-400 mb-2" />
                   <p className="text-sm font-bold text-gray-400">
-                    해당 날짜에 추천받은 식단이 없습니다.
+                    {t.emptyMealRecord}
                   </p>
                 </div>
               )}
